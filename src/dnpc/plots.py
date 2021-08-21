@@ -9,11 +9,12 @@ def plot_wq_running_to_parsl_running_histo(db_context):
 
     all_try_contexts = []
 
-    for wf_context in db_context.subcontexts:
-        task_contexts = [sc for sc in wf_context.subcontexts if sc.type == 'parsl.task']
+    wf_contexts = db_context.subcontexts_by_type("parsl.workflow")
+
+    for wf_context in wf_contexts:
+        task_contexts = wf_context.subcontexts_by_type("parsl.task")
         for task_context in task_contexts:
-            logger.info(f"task subcontexts have keys: {task_context._subcontexts.keys()}")
-            try_contexts = [sc for sc in task_context.subcontexts if sc.type == 'parsl.try']
+            try_contexts = task_context.subcontexts_by_type("parsl.try")
             all_try_contexts += try_contexts
 
     # Now all_try_contexts has all of the try contexts in flattened form.
@@ -27,7 +28,7 @@ def plot_wq_running_to_parsl_running_histo(db_context):
         for event in context.events:
             event_types.add(event.type)
 
-        executor_contexts = [c for c in context.subcontexts if c.type == 'parsl.try.executor']
+        executor_contexts = context.subcontexts_by_type("parsl.try.executor")
         logger.info(f"context.subcontexts = {context.subcontexts}")
         logger.info(f"executor_contexts = {executor_contexts}")
         if len(executor_contexts) == 0:
@@ -61,7 +62,7 @@ def plot_wq_running_to_parsl_running_histo(db_context):
         running_events = [e for e in context.events if e.type == "running"]
         parsl_running_event = running_events[0]  # we selected based on this event existing so [0] will always exist
 
-        executor_contexts = [c for c in context.subcontexts if c.type == 'parsl.try.executor']
+        executor_contexts = context.subcontexts_by_type("parsl.try.executor")
         logger.info(f"executor_contexts = {executor_contexts}")
         assert(len(executor_contexts) == 1)
         pte_context = executor_contexts[0]
@@ -89,11 +90,9 @@ def plot_tries_runtime_histo(db_context):
 
     all_try_contexts = []
 
-    for wf_context in db_context.subcontexts:
-        task_contexts = [sc for sc in wf_context.subcontexts if sc.type == 'parsl.task']
-        for task_context in task_contexts:
-            try_contexts = [sc for sc in task_context.subcontexts if sc.type == 'parsl.try']
-            all_try_contexts += try_contexts
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
+            all_try_contexts += task_context.subcontexts_by_type("parsl.try")
 
     # Now all_try_contexts has all of the try contexts in flattened form.
     # Filter so we only have try contexts which have both a running and a returned event
@@ -140,13 +139,10 @@ def plot_wq_task_runtime_histo(db_context):
 
     all_wq_task_contexts = []
 
-    for wf_context in db_context.subcontexts:
-        task_contexts = [sc for sc in wf_context.subcontexts if sc.type == 'parsl.task']
-        for task_context in task_contexts:
-            try_contexts = [sc for sc in task_context.subcontexts if sc.type == 'parsl.try']
-            for try_context in try_contexts:
-                te_contexts = [sc for sc in try_context.subcontexts if sc.type == 'parsl.try.executor']
-                all_wq_task_contexts += te_contexts
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
+            for try_context in task_context.subcontexts_by_type("parsl.try"):
+                all_wq_task_contexts += try_context.subcontexts_by_type("parsl.try.executor")
 
     # Now all_try_contexts has all of the try contexts in flattened form.
     # Filter so we only have try contexts which have both a running and a returned event
@@ -197,11 +193,9 @@ def plot_tries_cumul(db_context):
 
     all_subcontext_events = []
 
-    for wf_context in db_context.subcontexts:
-        task_contexts = [sc for sc in wf_context.subcontexts if sc.type == 'parsl.task']
-        for task_context in task_contexts:
-            try_contexts = [sc for sc in task_context.subcontexts if sc.type == 'parsl.try']
-            for try_subcontext in try_contexts:
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
+            for try_subcontext in task_context.subcontexts_by_type("parsl.try"):
                 all_subcontext_events += try_subcontext.events
 
     logger.info(f"all subcontext events: {all_subcontext_events}")
@@ -249,12 +243,10 @@ def plot_tasks_summary_cumul(db_context):
 
     all_subcontext_events = []
 
-    for wf_context in db_context.subcontexts:
-        task_contexts = [sc for sc in wf_context.subcontexts if sc.type == 'parsl.task']
-        for task_context in task_contexts:
-            state_contexts = [sc for sc in task_context.subcontexts if sc.type == 'parsl.task.summary']
-            for task_subcontext in state_contexts:
-                all_subcontext_events += task_subcontext.events
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
+            for state_subcontext in task_context.subcontexts_by_type("parsl.task.summary"):
+                all_subcontext_events += state_subcontext.events
 
     logger.info(f"all subcontext events: {all_subcontext_events}")
 
@@ -301,12 +293,10 @@ def plot_tasks_status_cumul(db_context):
 
     all_subcontext_events = []
 
-    for wf_context in db_context.subcontexts:
-        task_contexts = [sc for sc in wf_context.subcontexts if sc.type == 'parsl.task']
-        for task_context in task_contexts:
-            state_contexts = [sc for sc in task_context.subcontexts if sc.type == 'parsl.task.states']
-            for task_subcontext in state_contexts:
-                all_subcontext_events += task_subcontext.events
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
+            for state_subcontext in task_context.subcontexts_by_type("parsl.task.states"):
+                all_subcontext_events += state_subcontext.events
 
     logger.info(f"all subcontext events: {all_subcontext_events}")
 
@@ -349,11 +339,9 @@ def plot_tasks_status_streamgraph(db_context):
 
     all_state_subcontexts = set()
 
-    for wf_context in db_context.subcontexts:
-        task_contexts = [sc for sc in wf_context.subcontexts if sc.type == 'parsl.task']
-        for task_context in task_contexts:
-            state_contexts = [sc for sc in task_context.subcontexts if sc.type == 'parsl.task.states']
-            all_state_subcontexts.update(state_contexts)
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
+            all_state_subcontexts.update(task_context.subcontexts_by_type("parsl.task.states"))
 
     # parsl task-level states
     colour_states = {
@@ -371,20 +359,17 @@ def plot_tasks_status_streamgraph(db_context):
 def plot_task_running_event_streamgraph(db_context):
     all_state_subcontexts = set()
 
-    for wf_context in db_context.subcontexts:
-        task_contexts = [sc for sc in wf_context.subcontexts if sc.type == 'parsl.task']
-        for task_context in task_contexts:
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
             this_task_contexts = set()
-            # this_task_contexts.add(task_context)
-            try_contexts = [tc for tc in task_context.subcontexts if tc.type == 'parsl.try']
-            # this_task_contexts.update(try_contexts)
-            for try_subcontext in try_contexts:
-                wq_contexts = [tc for tc in try_subcontext.subcontexts if tc.type == 'parsl.try.executor']
+            for try_subcontext in task_context.subcontexts_by_type("parsl.try"):
+                wq_contexts = try_subcontext.subcontexts_by_type("parsl.try.executor")
                 this_task_contexts.update(wq_contexts)
                 for wq_subcontext in wq_contexts:
                     this_task_contexts.update(wq_subcontext.subcontexts)
 
-            state_contexts = [tc for tc in task_context.subcontexts if tc.type == 'parsl.task.states']
+            state_contexts = task_context.subcontexts_by_type("parsl.task.states")
+
             this_task_contexts.update(state_contexts)
             collapsed_context = Context.new_root_context()
             for c in this_task_contexts:
@@ -602,22 +587,18 @@ def plot_all_task_events_cumul(db_context, filename="dnpc-all-task-events-cumul.
     # TODO: this should maybe use a set for all_subcontext_events:
     # in some cases, there might be multiple routes to the same context,
     # and each context should only be counted once.
-    for wf_context in db_context.subcontexts:
-        task_contexts = [sc for sc in wf_context.subcontexts if sc.type == 'parsl.task']
-        for task_context in task_contexts:
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
             all_subcontext_events += task_context.events
 
-            try_contexts = [tc for tc in task_context.subcontexts if tc.type == 'parsl.try']
-            for try_subcontext in try_contexts:
+            for try_subcontext in task_context.subcontexts_by_type("parsl.try"):
                 all_subcontext_events += try_subcontext.events
-                wq_contexts = [tc for tc in try_subcontext.subcontexts if tc.type == 'parsl.try.executor']
-                for wq_subcontext in wq_contexts:
+                for wq_subcontext in try_subcontext.subcontexts_by_type("parsl.try.executor"):
                     all_subcontext_events += wq_subcontext.events
                     for s in wq_subcontext.subcontexts:
                         all_subcontext_events += s.events
 
-            state_contexts = [tc for tc in task_context.subcontexts if tc.type == 'parsl.task.states']
-            for state_context in state_contexts:
+            for state_context in task_context.subcontexts_by_type("parsl.task.states"): 
                 all_subcontext_events += state_context.events
 
     logger.info(f"all subcontext events: {all_subcontext_events}")
@@ -664,13 +645,10 @@ def plot_wq_parsl_worker_cumul(db_context):
 
     all_subcontext_events = []
 
-    for wf_context in db_context.subcontexts:
-        task_contexts = [sc for sc in wf_context.subcontexts if sc.type == 'parsl.task']
-        for task_context in task_contexts:
-            try_contexts = [tc for tc in task_context.subcontexts if tc.type == 'parsl.try']
-            for try_subcontext in try_contexts:
-                wq_contexts = [tc for tc in try_subcontext.subcontexts if tc.type == 'parsl.try.executor']
-                for wq_subcontext in wq_contexts:
+    for wq_context in db_context.subcontexts_by_type("parsl.workflow"):
+        for task_context in wq_context.subcontexts_by_type("parsl.task"):
+            for try_subcontext in task_context.subcontexts_by_type("parsl.try"):
+                for wq_subcontext in try_subcontext.subcontexts_by_type("parsl.try.executor"):
                     all_subcontext_events += wq_subcontext.events
 
     logger.info(f"all subcontext events: {all_subcontext_events}")
@@ -722,7 +700,7 @@ def plot_workflows_cumul(db_context):
 
     all_subcontext_events = []
 
-    for context in db_context.subcontexts:
+    for context in db_context.subcontexts_by_type("parsl.workflow"):
         all_subcontext_events += context.events
 
     logger.info(f"all subcontext events: {all_subcontext_events}")

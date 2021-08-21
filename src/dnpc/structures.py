@@ -194,3 +194,5 @@ class Context:
 
         return self._events
 
+    def subcontexts_by_type(self, typename):
+        return [c for c in self.subcontexts if c.type == typename] 
