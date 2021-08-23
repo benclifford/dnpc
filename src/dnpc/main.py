@@ -12,12 +12,15 @@ from dnpc.plots import (plot_workflows_cumul,
     plot_tasks_summary_cumul,
     plot_tasks_status_cumul,
     plot_tries_cumul,
-    plot_tries_runtime_histo,
+    plot_tries_runtime_histo_submit,
+    plot_tries_runtime_histo_wq,
     plot_wq_task_runtime_histo,
     plot_wq_running_to_parsl_running_histo,
     plot_wq_parsl_worker_cumul,
     plot_all_task_events_cumul,
     plot_tasks_status_streamgraph,
+    plot_tasks_status_streamgraph_submit,
+    plot_tasks_status_streamgraph_wq,
     plot_task_running_event_streamgraph
     )
 
@@ -33,12 +36,13 @@ def import_workflow_task_tries(base_context: Context, db: sqlite3.Connection, ru
     # SELECT (julianday('now') - 2440587.5)*86400.0;
 
     for row in cur.execute(f"SELECT try_id, (julianday(task_try_time_launched) - 2440587.5)*86400.0, "
-                           f"(julianday(task_try_time_running) - 2440587.5)*86400.0, (julianday(task_try_time_returned) - 2440587.5)*86400.0 "
+                           f"(julianday(task_try_time_running) - 2440587.5)*86400.0, (julianday(task_try_time_returned) - 2440587.5)*86400.0, "
+                           f"task_executor "
                            f"FROM try WHERE run_id = '{run_id}' AND task_id = '{task_id}'"):
         try_id = row[0]
 
         try_context = base_context.get_context(try_id, "parsl.try")
-        try_context.name = "Try {try_id}"
+        try_context.name = f"Try {try_id} on executor {row[4]}"
 
         if row[1]:  # omit this event if it is NULL
             launched_event = Event()
@@ -58,6 +62,8 @@ def import_workflow_task_tries(base_context: Context, db: sqlite3.Connection, ru
             returned_event.type = "returned"
             returned_event.time = float(row[3])
             try_context.events.append(returned_event)
+
+        try_context.parsl_executor = row[4]
 
     return None
 
@@ -380,12 +386,15 @@ def main() -> None:
     plot_tasks_summary_cumul(monitoring_db_context)
     plot_tasks_status_cumul(monitoring_db_context)
     plot_tries_cumul(monitoring_db_context)
-    plot_tries_runtime_histo(monitoring_db_context)
+    plot_tries_runtime_histo_submit(monitoring_db_context)
+    plot_tries_runtime_histo_wq(monitoring_db_context)
     plot_wq_task_runtime_histo(monitoring_db_context)
     plot_wq_running_to_parsl_running_histo(monitoring_db_context)
     plot_wq_parsl_worker_cumul(monitoring_db_context)
     plot_all_task_events_cumul(monitoring_db_context)
     plot_tasks_status_streamgraph(monitoring_db_context)
+    plot_tasks_status_streamgraph_submit(monitoring_db_context)
+    plot_tasks_status_streamgraph_wq(monitoring_db_context)
     plot_task_running_event_streamgraph(monitoring_db_context)
 
     logger.info("dnpc end")

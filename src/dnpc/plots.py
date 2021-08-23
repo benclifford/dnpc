@@ -86,13 +86,15 @@ def plot_wq_running_to_parsl_running_histo(db_context):
     plt.savefig("dnpc-wq-running-to_parsl-running-histo.png")
 
 
-def plot_tries_runtime_histo(db_context):
+def plot_tries_runtime_histo_wq(db_context):
 
     all_try_contexts = []
 
     for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
         for task_context in wf_context.subcontexts_by_type("parsl.task"):
-            all_try_contexts += task_context.subcontexts_by_type("parsl.try")
+            for try_context in task_context.subcontexts_by_type("parsl.try"):
+                if hasattr(try_context, "parsl_executor") and try_context.parsl_executor == "work_queue":
+                    all_try_contexts.append(try_context)
 
     # Now all_try_contexts has all of the try contexts in flattened form.
     # Filter so we only have try contexts which have both a running and a returned event
@@ -132,7 +134,58 @@ def plot_tries_runtime_histo(db_context):
 
     ax.hist(xs, bins=100)
 
-    plt.savefig("dnpc-tries-runtime-histo.png")
+    plt.savefig("dnpc-tries-runtime-histo-wq.png")
+
+
+def plot_tries_runtime_histo_submit(db_context):
+
+    all_try_contexts = []
+
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
+            for try_context in task_context.subcontexts_by_type("parsl.try"):
+                if hasattr(try_context, "parsl_executor") and try_context.parsl_executor == "submit-node":
+                    all_try_contexts.append(try_context)
+
+    # Now all_try_contexts has all of the try contexts in flattened form.
+    # Filter so we only have try contexts which have both a running and a returned event
+
+    filtered_try_contexts = []
+    for context in all_try_contexts:
+        # flatten event_types into a set
+        event_types = set()
+        for event in context.events:
+            event_types.add(event.type)
+
+        if "running" in event_types and "returned" in event_types:
+            filtered_try_contexts.append(context)
+
+    # now filtered_try_contexts has all the tries with the right timestamp
+
+    # map these into something that can be fed into matplotlib histogram
+    xs = []
+    for context in filtered_try_contexts:
+        # extract running and returned values that we know are here
+        running_events = [e for e in context.events if e.type == "running"]
+        running_event = running_events[0]  # we selected based on this event existing so [0] will always exist
+
+        returned_events = [e for e in context.events if e.type == "returned"]
+        returned_event = returned_events[0]  # we selected based on this event existing so [0] will always exist
+
+        runtime = returned_event.time - running_event.time
+
+        xs.append(runtime)
+
+    logger.info(f"histo data for runtime: {xs}")
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+
+    plt.title("try runtime histogram")
+
+    ax.hist(xs, bins=100)
+
+    plt.savefig("dnpc-tries-runtime-histo-submit.png")
 
 
 def plot_wq_task_runtime_histo(db_context):
@@ -335,6 +388,74 @@ def plot_tasks_status_cumul(db_context):
     plt.savefig("dnpc-tasks-status-cumul.png")
 
 
+def plot_tasks_status_streamgraph_wq(db_context):
+    """status stream of tasks sent to the wq executor"""
+
+    all_state_subcontexts = set()
+
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        logger.info(f"number of task subcontexts: {len(wf_context.subcontexts_by_type('parsl.task'))}")
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
+
+            # select task context if it has a try subcontext with a parsl_executor
+            # attribute of 'submit-node'
+
+            try_subcontexts = task_context.subcontexts_by_type("parsl.try")
+            for try_subcontext in try_subcontexts:
+                if not hasattr(try_subcontext, "parsl_executor"):
+                    logger.info(f"try subcontext has no executor: {try_subcontext}, task_context = {task_context}, try_context subcontexts {try_subcontext.subcontexts}")
+                elif try_subcontext.parsl_executor == "work_queue":
+
+                    all_state_subcontexts.update(task_context.subcontexts_by_type("parsl.task.states"))
+                    break
+
+    # parsl task-level states
+    colour_states = {
+        'pending': "#222222",
+        'launched': "#000055",
+        'running': "#77FFFF",
+        'running_ended': "77FF77",
+        'exec_done': "#005500"
+
+    }
+
+    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-status-stream-wq.png", state_config=colour_states)
+
+
+def plot_tasks_status_streamgraph_submit(db_context):
+    """status stream of tasks sent to the submit executor"""
+
+    all_state_subcontexts = set()
+
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        logger.info(f"number of task subcontexts: {len(wf_context.subcontexts_by_type('parsl.task'))}")
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
+
+            # select task context if it has a try subcontext with a parsl_executor
+            # attribute of 'submit-node'
+
+            try_subcontexts = task_context.subcontexts_by_type("parsl.try")
+            for try_subcontext in try_subcontexts:
+                if not hasattr(try_subcontext, "parsl_executor"):
+                    logger.info(f"try subcontext has no executor: {try_subcontext}, task_context = {task_context}, try_context subcontexts {try_subcontext.subcontexts}")
+                elif try_subcontext.parsl_executor == "submit-node":
+
+                    all_state_subcontexts.update(task_context.subcontexts_by_type("parsl.task.states"))
+                    break
+
+    # parsl task-level states
+    colour_states = {
+        'pending': "#222222",
+        'launched': "#000055",
+        'running': "#77FFFF",
+        'running_ended': "77FF77",
+        'exec_done': "#005500"
+
+    }
+
+    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-status-stream-submit.png", state_config=colour_states)
+
+
 def plot_tasks_status_streamgraph(db_context):
 
     all_state_subcontexts = set()
@@ -366,7 +487,8 @@ def plot_task_running_event_streamgraph(db_context):
                 wq_contexts = try_subcontext.subcontexts_by_type("parsl.try.executor")
                 this_task_contexts.update(wq_contexts)
                 for wq_subcontext in wq_contexts:
-                    this_task_contexts.update(wq_subcontext.subcontexts)
+                    if hasattr(try_subcontext, "parsl_executor") and try_subcontext.parsl_executor == "work_queue":
+                        this_task_contexts.update(wq_subcontext.subcontexts)
 
             state_contexts = task_context.subcontexts_by_type("parsl.task.states")
 
