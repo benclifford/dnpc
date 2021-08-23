@@ -361,7 +361,7 @@ def import_monitoring_db(root_context: Context, dbname: str, rundir_map: (str, s
 
 
 def main() -> None:
-    set_stream_logger(name="dnpc")
+    set_stream_logger(name="dnpc", level = logging.INFO)
     logger.info("dnpc start")
 
     root_context = Context.new_root_context()
