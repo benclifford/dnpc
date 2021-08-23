@@ -29,7 +29,7 @@ from dnpc.plots import (plot_workflows_cumul,
 
 logger = logging.getLogger("dnpc.main")  # __name__ is not package qualified in __main__
 
-def import_workflow_task_tries(base_context: Context, db: sqlite3.Connection, run_id: str, task_id) -> None:
+def import_workflow_task_tries(base_context: Context, db: sqlite3.Connection, run_id: str, task_id, parsl_tz_shift: float) -> None:
     logger.info(f"Importing tries for task {task_id}")
 
     cur = db.cursor()
@@ -49,20 +49,20 @@ def import_workflow_task_tries(base_context: Context, db: sqlite3.Connection, ru
         if row[1]:  # omit this event if it is NULL
             launched_event = Event()
             launched_event.type = "launched"
-            launched_event.time = float(row[1])
+            launched_event.time = float(row[1]) + parsl_tz_shift
             try_context.events.append(launched_event)
 
         if row[2]:  # omit this event if it is NULL
             running_event = Event()
             running_event.type = "running"
-            running_event.time = float(row[2])
+            running_event.time = float(row[2]) + parsl_tz_shift
             try_context.events.append(running_event)
 
         if row[3] is not None:
             # then the task returned
             returned_event = Event()
             returned_event.type = "returned"
-            returned_event.time = float(row[3])
+            returned_event.time = float(row[3]) + parsl_tz_shift
             try_context.events.append(returned_event)
 
         try_context.parsl_executor = row[4]
@@ -70,7 +70,7 @@ def import_workflow_task_tries(base_context: Context, db: sqlite3.Connection, ru
     return None
 
 
-def import_workflow_tasks(base_context: Context, db: sqlite3.Connection, run_id: str) -> None:
+def import_workflow_tasks(base_context: Context, db: sqlite3.Connection, run_id: str, parsl_tz_shift: float) -> None:
     logger.info(f"Importing tasks for workflow {run_id}")
 
     cur = db.cursor()
@@ -85,14 +85,14 @@ def import_workflow_tasks(base_context: Context, db: sqlite3.Connection, run_id:
 
         start_event = Event()
         start_event.type = "start"
-        start_event.time = float(row[1])
+        start_event.time = float(row[1]) + parsl_tz_shift
         summary_context.events.append(start_event)
 
         if row[2] is not None:
             # ... then the task was recorded as finished
             end_event = Event()
             end_event.type = "end"
-            end_event.time = float(row[2])
+            end_event.time = float(row[2]) + parsl_tz_shift
             summary_context.events.append(end_event)
 
         state_context = task_context.get_context("states", "parsl.task.states")
@@ -103,10 +103,10 @@ def import_workflow_tasks(base_context: Context, db: sqlite3.Connection, run_id:
                                            f"FROM status WHERE run_id = '{run_id}' AND task_id = '{task_id}'"):
             start_event = Event()
             start_event.type = state_row[0]
-            start_event.time = float(state_row[1]) + (7.0 * 3600.0)  # TODO UGH TZ BODGE
+            start_event.time = float(state_row[1]) + parsl_tz_shift
             state_context.events.append(start_event)
 
-        import_workflow_task_tries(task_context, db, run_id, task_id)
+        import_workflow_task_tries(task_context, db, run_id, task_id, parsl_tz_shift)
 
     return None
 
@@ -244,7 +244,7 @@ def import_parsl_rundir(base_context: Context, rundir: str) -> None:
     logger.info(f"Finished importing rundir {rundir}")
 
 
-def import_workflow(base_context: Context, db: sqlite3.Connection, run_id: str, rundir_map: (str, str)) -> None:
+def import_workflow(base_context: Context, db: sqlite3.Connection, run_id: str, rundir_map: (str, str), parsl_tz_shift: float) -> None:
     logger.info(f"Importing workflow {run_id}")
 
     context = base_context.get_context(run_id, "parsl.workflow")
@@ -259,7 +259,7 @@ def import_workflow(base_context: Context, db: sqlite3.Connection, run_id: str, 
 
         start_event = Event()
         start_event.type = "start"
-        start_event.time = float(row[0])
+        start_event.time = float(row[0]) + parsl_tz_shift
         context.events.append(start_event)
 
         if row[1] is not None:
@@ -268,7 +268,7 @@ def import_workflow(base_context: Context, db: sqlite3.Connection, run_id: str, 
             end_event = Event()
             end_event.type = "end"
             end_event.time = float(row[1])
-            context.events.append(end_event)
+            context.events.append(end_event) + parsl_tz_shift
 
         rundir = row[2]
         # TODO: we'll get the last rundir silently discarding
@@ -279,7 +279,7 @@ def import_workflow(base_context: Context, db: sqlite3.Connection, run_id: str, 
     if rundir.startswith(rundir_map[0]):
         rundir = rundir_map[1] + rundir.removeprefix(rundir_map[0])
 
-    import_workflow_tasks(context, db, run_id)
+    import_workflow_tasks(context, db, run_id, parsl_tz_shift)
 
     # there are also things defined in the parsl log (indeed, a decent amount
     # of information could come from the parsl.log file without any
@@ -329,7 +329,7 @@ def import_workflow(base_context: Context, db: sqlite3.Connection, run_id: str, 
     return context
 
 
-def import_monitoring_db(root_context: Context, dbname: str, rundir_map: (str, str)) -> Context:
+def import_monitoring_db(root_context: Context, dbname: str, rundir_map: (str, str), parsl_tz_shift: float) -> Context:
     """This will import an entire monitoring database as a context.
     A monitoring database root context does not contain any events
     directly; it contains each workflow run as a subcontext.
@@ -352,7 +352,7 @@ def import_monitoring_db(root_context: Context, dbname: str, rundir_map: (str, s
         run_id = row[0]
         logger.info(f"workflow: {run_id}")
 
-        import_workflow(context, db, run_id, rundir_map = rundir_map)
+        import_workflow(context, db, run_id, rundir_map = rundir_map, parsl_tz_shift=parsl_tz_shift)
 
     db.close()
 
@@ -373,7 +373,7 @@ def main() -> None:
     parsl_rundir_map = ("/global/cscratch1/sd/bxc/run202108/gen3_workflow/runinfo/",
                         "/home/benc/parsl/src/parsl/bps1/")
 
-    import_monitoring_db(root_context, "./monitoring.db", rundir_map = parsl_rundir_map)
+    import_monitoring_db(root_context, "./monitoring.db", rundir_map = parsl_rundir_map, parsl_tz_shift= 7.0 * 3600.0)
 
     monitoring_db_context = root_context.get_context("monitoring", "parsl.monitoring.db")
 
