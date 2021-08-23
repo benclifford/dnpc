@@ -581,7 +581,111 @@ def plot_task_running_event_streamgraph_wq(db_context):
     plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-running-event-stream-wq.png", state_config=config_states)
 
 
-def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
+def plot_task_running_event_stacked_wq(db_context):
+    all_state_subcontexts = set()
+
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
+            this_task_contexts = set()
+            for try_subcontext in task_context.subcontexts_by_type("parsl.try"):
+                wq_contexts = try_subcontext.subcontexts_by_type("parsl.try.executor")
+                this_task_contexts.update(wq_contexts)
+                for wq_subcontext in wq_contexts:
+                    if hasattr(try_subcontext, "parsl_executor") and try_subcontext.parsl_executor == "work_queue":
+                        this_task_contexts.update(wq_subcontext.subcontexts)
+
+            state_contexts = task_context.subcontexts_by_type("parsl.task.states")
+
+            this_task_contexts.update(state_contexts)
+            collapsed_context = Context.new_root_context()
+            for c in this_task_contexts:
+                for e in c.events:
+                    new_event = Event()
+                    new_event.time = e.time
+                    new_event.type = c.type + "." + e.type
+                    collapsed_context.events.append(new_event)
+                
+            collapsed_context.events.sort(key=lambda e: e.time)
+
+            # allowed_end_states = ['exec_done', 'failed', 'memo_done', 'dep_fail','DONE', 'running_ended', 'pending']
+            # ignore states that don't use a worker
+            config_states = {
+                # before
+                'parsl.task.states.pending': None,
+                'parsl.task.states.launched': None,
+                'parsl.try.executor.WAITING': None,
+
+                # during
+                'parsl.try.executor.RUNNING': "#FF0000",
+                'parsl.wq.exec_parsl_function.START': "#00FF00",
+                'parsl.wq.exec_parsl_function.POSTIMPORT': "#FFFF00",
+                'parsl.wq.exec_parsl_function.MAINSTART': "#0000FF",
+                'parsl.wq.exec_parsl_function.LOADFUNCTION': "#FF00FF",
+                'parsl.wq.exec_parsl_function.EXECUTEFUNCTION': "#777777",
+
+                'parsl.task.states.running': "#FF6600",
+
+
+                # starting to end
+                'parsl.task.states.running_ended': "#806680",
+                'parsl.wq.exec_parsl_function.DUMP': "#809980",
+                'parsl.wq.exec_parsl_function.DONE': "#80FF80",
+                'parsl.task.states.joining': None,
+                'parsl.try.executor.WAITING_RETRIEVAL': "#801180",
+                'parsl.try.executor.RETRIEVED': "#802280",
+                'parsl.try.executor.DONE': None,
+
+                # after
+ 
+                'parsl.task.states.dep_fail': None, # "#FF8888",
+                'parsl.task.states.failed': None, # "#FF0000",
+                'parsl.task.states.exec_done': None, # "#00FF00",
+                'parsl.task.states.memo_done': None, # "#88FF88",
+            }
+
+            all_except_done_config_states = {
+                # before
+                'parsl.task.states.pending': "#669999",
+                'parsl.task.states.launched': "#007777",
+                'parsl.try.executor.WAITING': "#006666",
+
+                # during
+                'parsl.try.executor.RUNNING': "#FF22FF",
+                'parsl.wq.exec_parsl_function.START': "#FF44FF",
+                'parsl.wq.exec_parsl_function.POSTIMPORT': "#FF55FF",
+                'parsl.wq.exec_parsl_function.MAINSTART': "#FF66FF",
+                'parsl.wq.exec_parsl_function.LOADFUNCTION': "#FF77FF",
+                'parsl.wq.exec_parsl_function.EXECUTEFUNCTION': "#FF88FF",
+
+                'parsl.task.states.running': "#FF6600",
+
+
+                # starting to end
+                'parsl.task.states.running_ended': "#806680",
+                'parsl.wq.exec_parsl_function.DUMP': "#809980",
+                'parsl.wq.exec_parsl_function.DONE': "#80FF80",
+                'parsl.task.states.joining': "#800080",
+                'parsl.try.executor.WAITING_RETRIEVAL': "#801180",
+                'parsl.try.executor.RETRIEVED': "#802280",
+                'parsl.try.executor.DONE': None, # this is happening after exec_done in a substantial number of cases so mute it
+
+                # after
+ 
+                'parsl.task.states.dep_fail': None, # "#FF8888",
+                'parsl.task.states.failed': None, # "#FF0000",
+                'parsl.task.states.exec_done': None, # "#00FF00",
+                'parsl.task.states.memo_done': None, # "#88FF88",
+            }
+            # assert collapsed_context.events[-1].type in allowed_end_states, \
+            #    f"Bad final end state for event list {collapsed_context.events}"
+            all_state_subcontexts.add(collapsed_context)
+
+            logger.info(f"BENC context events: {collapsed_context.events}")
+
+    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-running-event-stacked-wq.png", state_config=config_states, baseline = 'zero')
+
+
+def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}, baseline='wiggle'):
 
     all_subcontext_events = []
 
@@ -696,7 +800,7 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
                 c_n += 1
 
     # ax.stackplot(canonical_x_axis, ys, labels=labels)
-    ax.stackplot(canonical_x_axis, ys, labels=labels, colors=colors, baseline='wiggle')
+    ax.stackplot(canonical_x_axis, ys, labels=labels, colors=colors, baseline=baseline)
     ax.legend(loc='upper left')
     plt.title("tasks in each state by time")
 

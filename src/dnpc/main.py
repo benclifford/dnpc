@@ -21,7 +21,8 @@ from dnpc.plots import (plot_workflows_cumul,
     plot_tasks_status_streamgraph,
     plot_tasks_status_streamgraph_submit,
     plot_tasks_status_streamgraph_wq,
-    plot_task_running_event_streamgraph_wq
+    plot_task_running_event_streamgraph_wq,
+    plot_task_running_event_stacked_wq
     )
 
 
@@ -396,6 +397,7 @@ def main() -> None:
     plot_tasks_status_streamgraph_submit(monitoring_db_context)
     plot_tasks_status_streamgraph_wq(monitoring_db_context)
     plot_task_running_event_streamgraph_wq(monitoring_db_context)
+    plot_task_running_event_stacked_wq(monitoring_db_context)
 
     logger.info("dnpc end")
 
