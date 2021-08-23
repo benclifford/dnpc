@@ -477,7 +477,7 @@ def plot_tasks_status_streamgraph(db_context):
     plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-status-stream.png", state_config=colour_states)
 
 
-def plot_task_running_event_streamgraph(db_context):
+def plot_task_running_event_streamgraph_wq(db_context):
     all_state_subcontexts = set()
 
     for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
@@ -578,7 +578,7 @@ def plot_task_running_event_streamgraph(db_context):
 
             logger.info(f"BENC context events: {collapsed_context.events}")
 
-    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-running-event-stream.png", state_config=config_states)
+    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-running-event-stream-wq.png", state_config=config_states)
 
 
 def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
