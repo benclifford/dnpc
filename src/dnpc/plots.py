@@ -86,6 +86,89 @@ def plot_wq_running_to_parsl_running_histo(db_context):
     plt.savefig("dnpc-wq-running-to_parsl-running-histo.png")
 
 
+def plot_execute_function_to_parsl_running_histo(db_context):
+
+    all_try_contexts = []
+
+    wf_contexts = db_context.subcontexts_by_type("parsl.workflow")
+
+    for wf_context in wf_contexts:
+        task_contexts = wf_context.subcontexts_by_type("parsl.task")
+        for task_context in task_contexts:
+            try_contexts = task_context.subcontexts_by_type("parsl.try")
+            all_try_contexts += try_contexts
+
+    # Now all_try_contexts has all of the try contexts in flattened form.
+    # Filter so we only have try contexts which have both a running and a returned event
+
+    filtered_try_contexts = []
+    for context in all_try_contexts:
+        logger.info(f"examining try context {context}")
+        # flatten event_types into a set
+        event_types = set()
+        for event in context.events:
+            event_types.add(event.type)
+
+        executor_contexts = context.subcontexts_by_type("parsl.try.executor")
+        logger.info(f"context.subcontexts = {context.subcontexts}")
+        logger.info(f"executor_contexts = {executor_contexts}")
+        if len(executor_contexts) == 0:
+            # raise RuntimeError(f"wrong number of executor contexts: {executor_contexts}") # temp dbg
+            logger.info(f"skipping because no executor_context")
+            continue
+        elif len(executor_contexts) > 1:
+            raise RuntimeError(f"Too many executor contexts: {executor_contexts}") # temp dbg
+        epf_contexts = executor_contexts[0].subcontexts_by_type("parsl.wq.exec_parsl_function")
+
+        pte_context = epf_contexts[0]
+
+        pte_event_types = set()
+        for event in pte_context.events:
+            pte_event_types.add(event.type)
+
+        logger.info(f"event_types: {event_types}")
+        logger.info(f"pte_event_types: {pte_event_types}")
+
+        if "running" in event_types and 'EXECUTEFUNCTION' in pte_event_types:
+            filtered_try_contexts.append(context)
+        elif "running" in event_types and 'EXECUTEFUNCTION' in pte_event_types:
+            raise RuntimeError(f"Got one but not the other: {event_types} {pte_event_types}")
+
+    # now filtered_try_contexts has all the tries with the right timestamp
+
+    # map these into something that can be fed into matplotlib histogram
+    xs = []
+    for context in filtered_try_contexts:
+        # extract running and returned values that we know are here
+        running_events = [e for e in context.events if e.type == "running"]
+        parsl_running_event = running_events[0]  # we selected based on this event existing so [0] will always exist
+
+        executor_contexts = context.subcontexts_by_type("parsl.try.executor")
+        logger.info(f"executor_contexts = {executor_contexts}")
+        assert(len(executor_contexts) == 1)
+        epf_contexts = executor_contexts[0].subcontexts_by_type("parsl.wq.exec_parsl_function")
+        assert(len(epf_contexts) == 1)
+        pte_context = epf_contexts[0]
+
+        wq_running_events = [e for e in pte_context.events if e.type == "EXECUTEFUNCTION"]
+        wq_running_event = wq_running_events[0]  # we selected based on this event existing so [0] will always exist
+
+        runtime = parsl_running_event.time - wq_running_event.time
+
+        xs.append(runtime)
+
+    logger.info(f"histo data for runtime: {xs}")
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+
+    plt.title("time from wq running to parsl running histogram")
+
+    ax.hist(xs, bins=100)
+
+    plt.savefig("dnpc-execute_function-to_parsl-running-histo.png")
+
+
 def plot_tries_runtime_histo_wq(db_context):
 
     all_try_contexts = []
