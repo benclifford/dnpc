@@ -68,6 +68,11 @@ class Context:
     A user should not call the Context() constructor directly - instead use
     the new_root_context and get() class methods
 
+    BUG: attributes set on a Context object are not properly aliased
+
+    BUG: id() and __eq__() don't equate two aliased Context objects, which
+    probably messes up use in `set`
+
 
     """
     type: str
