@@ -771,6 +771,10 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
     logger.info("plot_context_streamgraph: iterating over event types")
     for event_type in event_types:
         logger.info(f"plot_context_streamgraph: {event_type}: start")
+        config = state_config.get(event_type, -1)
+        if config is None:
+            logger.info(f"plot_context_streamgraph: {event_type}: skipping as muted")
+            continue
 
         y = []
         these_events = plot_events.get(event_type, [])
@@ -798,17 +802,13 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
 
         # logger.info(f"will plot event {event_type} with x={x} and y={y}")
 
-        # if event_type not in hide_states:
-        config = state_config.get(event_type, -1)
-        if config is not None:
-            ys.append(y)
-            labels.append(event_type)
-            if config != -1:
-                colors.append(config)
-            else:
-                colors.append("#777777") # todo something more auto distinct
-                #colors.append(None)
-                c_n += 1
+        ys.append(y)
+        labels.append(event_type)
+        if config != -1:
+            colors.append(config)
+        else:
+            colors.append("#777777") # todo something more auto distinct
+            c_n += 1
         logger.info(f"plot_context_streamgraph: {event_type}: done")
 
     logger.info("plot_context_streamgraph: iterating over baselines")
