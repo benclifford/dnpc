@@ -670,6 +670,8 @@ def plot_task_running_event_stacked_and_streamgraph_wq(db_context):
 
 def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
 
+
+    logger.info("plot_context_streamgraph: starting")
     implicit_state_sequence = ["running_ended", "exec_done"] + ["parsl.wq.exec_parsl_function.EXECUTEFUNCTION", "parsl.task.states.running", "parsl.task.states.running_ended", "parsl.task.states.exec_done"]
     # given an event, disambiguate its event ordering wrt other events
     # which might happen in the same instant, by applying domain specific
@@ -683,6 +685,7 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
 
     all_subcontext_events = []
 
+    logger.info("plot_context_streamgraph: collecting contexts")
     for context in all_state_subcontexts:
         all_subcontext_events += context.events
 
@@ -690,10 +693,11 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
 
     event_types = set()
 
+    logger.info("plot_context_streamgraph: collecting event types")
     for event in all_subcontext_events:
         event_types.add(event.type)
 
-    logger.info(f"Stack/streamgraph: all event types: {event_types}")
+    # logger.info(f"Stack/streamgraph: all event types: {event_types}")
 
     # now generate a different stream of events, to be used for plotting:
     # for each task,
@@ -705,6 +709,7 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
     for t in event_types:
         plot_events[t] = []
 
+    logger.info("plot_context_streamgraph: collecting events")
     for s in all_state_subcontexts:
         if len(s.events) == 0:
             continue
@@ -735,6 +740,7 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
     # for each of those data series, align the x axes by duplicating entries
     # to ensure the x axis is fully populated
 
+    logger.info("plot_context_streamgraph: collecting x axis values")
     canonical_x_axis_set = set()
     for t in event_types:
         these_x = [e[0] for e in plot_events[t]]
@@ -762,7 +768,9 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
     # matplotlib color cycle number
     c_n = 0
 
+    logger.info("plot_context_streamgraph: iterating over event types")
     for event_type in event_types:
+        logger.info(f"plot_context_streamgraph: {event_type}: start")
 
         y = []
         these_events = plot_events.get(event_type, [])
@@ -770,6 +778,7 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
         these_events.sort(key=lambda pe: pe[0])
 
         n = 0
+        logger.info(f"plot_context_streamgraph: {event_type}: sweeping x axis")
         for x in canonical_x_axis:
 
             while len(these_events) > 0 and these_events[0][0] == x:
@@ -781,6 +790,7 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
             assert len(these_events) == 0 or these_events[0][0] > x, "Next event must be in future"
             y.append(n)
 
+        logger.info(f"plot_context_streamgraph: {event_type}: done sweeping x axis")
         # logger.info(f"event type {event_type} event list {these_events} generated sequence {y}")
 
         # we should have used up all of the events for this event type
@@ -799,7 +809,9 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
                 colors.append("#777777") # todo something more auto distinct
                 #colors.append(None)
                 c_n += 1
+        logger.info(f"plot_context_streamgraph: {event_type}: done")
 
+    logger.info("plot_context_streamgraph: iterating over baselines")
     for baseline in ['zero', 'wiggle']:
         fig = plt.figure(figsize=(16, 10))
         ax = fig.add_subplot(1, 1, 1)
@@ -809,6 +821,7 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
         plt.title(f"Contexts in each state by time ({baseline} baseline)")
 
         plt.savefig(baseline+"-"+filename)
+    logger.info("plot_context_streamgraph: done")
 
 
 def plot_all_task_events_cumul(db_context, filename="dnpc-all-task-events-cumul.png"):
