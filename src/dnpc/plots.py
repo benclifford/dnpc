@@ -502,7 +502,7 @@ def plot_tasks_status_streamgraph_wq(db_context):
 
     }
 
-    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-status-stream-wq.png", state_config=colour_states)
+    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-status-wq.png", state_config=colour_states)
 
 
 def plot_tasks_status_streamgraph_submit(db_context):
@@ -536,7 +536,7 @@ def plot_tasks_status_streamgraph_submit(db_context):
 
     }
 
-    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-status-stream-submit.png", state_config=colour_states)
+    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-status-submit.png", state_config=colour_states)
 
 
 def plot_tasks_status_streamgraph(db_context):
@@ -557,10 +557,12 @@ def plot_tasks_status_streamgraph(db_context):
 
     }
 
-    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-status-stream.png", state_config=colour_states)
+    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-status.png", state_config=colour_states)
 
 
-def plot_task_running_event_streamgraph_wq(db_context):
+def plot_task_running_event_stacked_and_streamgraph_wq(db_context):
+
+    logger.info("starting stacked_and_streamgraph unified plot code")
     all_state_subcontexts = set()
 
     for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
@@ -661,128 +663,37 @@ def plot_task_running_event_streamgraph_wq(db_context):
 
             logger.info(f"BENC context events: {collapsed_context.events}")
 
-    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-running-event-stream-wq.png", state_config=config_states)
+    logger.info("post-shared-processing - starting plot")
+    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-running-event-wq.png", state_config=config_states)
+    logger.info("starting stacked_and_streamgraph unified plot code")
 
 
-def plot_task_running_event_stacked_wq(db_context):
-    all_state_subcontexts = set()
+def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
 
-    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
-        for task_context in wf_context.subcontexts_by_type("parsl.task"):
-            this_task_contexts = set()
-            for try_subcontext in task_context.subcontexts_by_type("parsl.try"):
-                wq_contexts = try_subcontext.subcontexts_by_type("parsl.try.executor")
-                this_task_contexts.update(wq_contexts)
-                for wq_subcontext in wq_contexts:
-                    if hasattr(try_subcontext, "parsl_executor") and try_subcontext.parsl_executor == "work_queue":
-                        this_task_contexts.update(wq_subcontext.subcontexts)
-
-            state_contexts = task_context.subcontexts_by_type("parsl.task.states")
-
-            this_task_contexts.update(state_contexts)
-            collapsed_context = Context.new_root_context()
-            for c in this_task_contexts:
-                for e in c.events:
-                    new_event = Event()
-                    new_event.time = e.time
-                    new_event.type = c.type + "." + e.type
-                    collapsed_context.events.append(new_event)
-                
-            collapsed_context.events.sort(key=lambda e: e.time)
-
-            # allowed_end_states = ['exec_done', 'failed', 'memo_done', 'dep_fail','DONE', 'running_ended', 'pending']
-            # ignore states that don't use a worker
-            config_states = {
-                # before
-                'parsl.task.states.pending': None,
-                'parsl.task.states.launched': None,
-                'parsl.try.executor.WAITING': None,
-
-                # during
-                'parsl.try.executor.RUNNING': "#FF0000",
-                'parsl.wq.exec_parsl_function.START': "#00FF00",
-                'parsl.wq.exec_parsl_function.POSTIMPORT': "#FFFF00",
-                'parsl.wq.exec_parsl_function.MAINSTART': "#0000FF",
-                'parsl.wq.exec_parsl_function.LOADFUNCTION': "#FF00FF",
-                'parsl.wq.exec_parsl_function.EXECUTEFUNCTION': "#777777",
-
-                'parsl.task.states.running': "#FF6600",
-
-
-                # starting to end
-                'parsl.task.states.running_ended': "#806680",
-                'parsl.wq.exec_parsl_function.DUMP': "#809980",
-                'parsl.wq.exec_parsl_function.DONE': "#80FF80",
-                'parsl.task.states.joining': None,
-                'parsl.try.executor.WAITING_RETRIEVAL': "#801180",
-                'parsl.try.executor.RETRIEVED': "#802280",
-                'parsl.try.executor.DONE': None,
-
-                # after
- 
-                'parsl.task.states.dep_fail': None, # "#FF8888",
-                'parsl.task.states.failed': None, # "#FF0000",
-                'parsl.task.states.exec_done': None, # "#00FF00",
-                'parsl.task.states.memo_done': None, # "#88FF88",
-            }
-
-            all_except_done_config_states = {
-                # before
-                'parsl.task.states.pending': "#669999",
-                'parsl.task.states.launched': "#007777",
-                'parsl.try.executor.WAITING': "#006666",
-
-                # during
-                'parsl.try.executor.RUNNING': "#FF22FF",
-                'parsl.wq.exec_parsl_function.START': "#FF44FF",
-                'parsl.wq.exec_parsl_function.POSTIMPORT': "#FF55FF",
-                'parsl.wq.exec_parsl_function.MAINSTART': "#FF66FF",
-                'parsl.wq.exec_parsl_function.LOADFUNCTION': "#FF77FF",
-                'parsl.wq.exec_parsl_function.EXECUTEFUNCTION': "#FF88FF",
-
-                'parsl.task.states.running': "#FF6600",
-
-
-                # starting to end
-                'parsl.task.states.running_ended': "#806680",
-                'parsl.wq.exec_parsl_function.DUMP': "#809980",
-                'parsl.wq.exec_parsl_function.DONE': "#80FF80",
-                'parsl.task.states.joining': "#800080",
-                'parsl.try.executor.WAITING_RETRIEVAL': "#801180",
-                'parsl.try.executor.RETRIEVED': "#802280",
-                'parsl.try.executor.DONE': None, # this is happening after exec_done in a substantial number of cases so mute it
-
-                # after
- 
-                'parsl.task.states.dep_fail': None, # "#FF8888",
-                'parsl.task.states.failed': None, # "#FF0000",
-                'parsl.task.states.exec_done': None, # "#00FF00",
-                'parsl.task.states.memo_done': None, # "#88FF88",
-            }
-            # assert collapsed_context.events[-1].type in allowed_end_states, \
-            #    f"Bad final end state for event list {collapsed_context.events}"
-            all_state_subcontexts.add(collapsed_context)
-
-            logger.info(f"BENC context events: {collapsed_context.events}")
-
-    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-running-event-stacked-wq.png", state_config=config_states, baseline = 'zero')
-
-
-def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}, baseline='wiggle'):
+    implicit_state_sequence = ["running_ended", "exec_done"] + ["parsl.wq.exec_parsl_function.EXECUTEFUNCTION", "parsl.task.states.running", "parsl.task.states.running_ended", "parsl.task.states.exec_done"]
+    # given an event, disambiguate its event ordering wrt other events
+    # which might happen in the same instant, by applying domain specific
+    # knowledge about sort orders.
+    def sortkey(e):
+        # convert e into an integer in the list of sort key positions.
+        if e.type in implicit_state_sequence:
+            return implicit_state_sequence.index(e.type)
+        else:
+            return -1
 
     all_subcontext_events = []
 
     for context in all_state_subcontexts:
         all_subcontext_events += context.events
 
-    logger.info(f"all subcontext events: {all_subcontext_events}")
+    # logger.info(f"all subcontext events: {all_subcontext_events}")
 
     event_types = set()
 
     for event in all_subcontext_events:
         event_types.add(event.type)
 
-    logger.info(f"all event types: {event_types}")
+    logger.info(f"Stack/streamgraph: all event types: {event_types}")
 
     # now generate a different stream of events, to be used for plotting:
     # for each task,
@@ -800,28 +711,16 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}, b
 
         # this probably should be passed as a paramter to this plotting
         # function, but for testing, try it out hard-coded:
-        implicit_state_sequence = ["running_ended", "exec_done"] + ["parsl.wq.exec_parsl_function.EXECUTEFUNCTION", "parsl.task.states.running", "parsl.task.states.running_ended", "parsl.task.states.exec_done"]
-
-        # given an event, disambiguate its event ordering wrt other events
-        # which might happen in the same instant, by applying domain specific
-        # knowledge about sort orders.
-        def sortkey(e):
-            # convert e into an integer in the list of sort key positions.
-            if e.type in implicit_state_sequence:
-                return implicit_state_sequence.index(e.type)
-            else:
-                return -1
 
         these_events = [e for e in s.events]  # copy so we can mutate safely
         these_events.sort(key=lambda e: (e.time, sortkey(e)))
 
         # this code was investigating why i was getting a lot of running ended...
         # leading to me doing more interesting stuff with the above sort keys
-        if these_events[-1].type == "running_ended":
-            raise RuntimeError(f"Events list ended with running_ended: {these_events}")
-
-        if these_events[-1].type == "parsl.task.states.running_ended":
-            raise RuntimeError(f"Events list ended with parsl.task.states.running_ended: {these_events}")
+        # if these_events[-1].type == "running_ended":
+        #     raise RuntimeError(f"Events list ended with running_ended: {these_events}")
+        # if these_events[-1].type == "parsl.task.states.running_ended":
+        #    raise RuntimeError(f"Events list ended with parsl.task.states.running_ended: {these_events}")
 
         plot_events[these_events[0].type].append((these_events[0].time, 1))
         prev_event_type = these_events[0].type
@@ -847,9 +746,6 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}, b
 
     canonical_x_axis = list(canonical_x_axis_set)
     canonical_x_axis.sort()
-
-    fig = plt.figure(figsize=(16, 10))
-    ax = fig.add_subplot(1, 1, 1)
 
     ys = []
     labels = []
@@ -885,12 +781,12 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}, b
             assert len(these_events) == 0 or these_events[0][0] > x, "Next event must be in future"
             y.append(n)
 
-        logger.info(f"event type {event_type} event list {these_events} generated sequence {y}")
+        # logger.info(f"event type {event_type} event list {these_events} generated sequence {y}")
 
         # we should have used up all of the events for this event type
         assert these_events == [], f"Some events remaining: {these_events}"
 
-        logger.info(f"will plot event {event_type} with x={x} and y={y}")
+        # logger.info(f"will plot event {event_type} with x={x} and y={y}")
 
         # if event_type not in hide_states:
         config = state_config.get(event_type, -1)
@@ -904,12 +800,15 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}, b
                 #colors.append(None)
                 c_n += 1
 
-    # ax.stackplot(canonical_x_axis, ys, labels=labels)
-    ax.stackplot(canonical_x_axis, ys, labels=labels, colors=colors, baseline=baseline)
-    ax.legend(loc='upper left')
-    plt.title("tasks in each state by time")
+    for baseline in ['zero', 'wiggle']:
+        fig = plt.figure(figsize=(16, 10))
+        ax = fig.add_subplot(1, 1, 1)
 
-    plt.savefig(filename)
+        ax.stackplot(canonical_x_axis, ys, labels=labels, colors=colors, baseline=baseline)
+        ax.legend(loc='upper left')
+        plt.title(f"Contexts in each state by time ({baseline} baseline)")
+
+        plt.savefig(baseline+"-"+filename)
 
 
 def plot_all_task_events_cumul(db_context, filename="dnpc-all-task-events-cumul.png"):
