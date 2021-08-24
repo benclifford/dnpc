@@ -29,7 +29,7 @@ from dnpc.plots import (plot_workflows_cumul,
 logger = logging.getLogger("dnpc.main")  # __name__ is not package qualified in __main__
 
 def import_workflow_task_tries(base_context: Context, db: sqlite3.Connection, run_id: str, task_id, parsl_tz_shift: float) -> None:
-    logger.info(f"Importing tries for task {task_id}")
+    logger.debug(f"Importing tries for task {task_id}")
 
     cur = db.cursor()
 
