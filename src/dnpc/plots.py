@@ -786,8 +786,10 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
         for x in canonical_x_axis:
 
             while len(these_events) > 0 and these_events[0][0] == x:
-                assert these_events[0][0] in canonical_x_axis_set, "timestamp must be in x axis somewhere"
-                assert these_events[0][0] in canonical_x_axis, "timestamp must be in x axis list somewhere"
+                # these asserts are very expensive, and covered by the
+                # assert right after the while loop
+                # assert these_events[0][0] in canonical_x_axis_set, "timestamp must be in x axis somewhere"
+                # assert these_events[0][0] in canonical_x_axis, "timestamp must be in x axis list somewhere"
                 n += these_events[0][1]
                 these_events = these_events[1:]
 
