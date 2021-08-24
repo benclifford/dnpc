@@ -371,7 +371,7 @@ def main() -> None:
     # The parsl monitoring DB at least contains hard-coded paths - this
     # map will swap the original prefix for the new prefix.
     parsl_rundir_map = ("/global/cscratch1/sd/bxc/run202108/gen3_workflow/runinfo/",
-                        "/home/benc/parsl/src/parsl/bps1/")
+                        "/home/benc/parsl/src/parsl/bps2/")
 
     import_monitoring_db(root_context, "./monitoring.db", rundir_map = parsl_rundir_map, parsl_tz_shift= 7.0 * 3600.0)
 

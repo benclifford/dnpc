@@ -798,8 +798,30 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}, b
         if len(s.events) == 0:
             continue
 
+        # this probably should be passed as a paramter to this plotting
+        # function, but for testing, try it out hard-coded:
+        implicit_state_sequence = ["running_ended", "exec_done"] + ["parsl.wq.exec_parsl_function.EXECUTEFUNCTION", "parsl.task.states.running", "parsl.task.states.running_ended", "parsl.task.states.exec_done"]
+
+        # given an event, disambiguate its event ordering wrt other events
+        # which might happen in the same instant, by applying domain specific
+        # knowledge about sort orders.
+        def sortkey(e):
+            # convert e into an integer in the list of sort key positions.
+            if e.type in implicit_state_sequence:
+                return implicit_state_sequence.index(e.type)
+            else:
+                return -1
+
         these_events = [e for e in s.events]  # copy so we can mutate safely
-        these_events.sort(key=lambda e: e.time)
+        these_events.sort(key=lambda e: (e.time, sortkey(e)))
+
+        # this code was investigating why i was getting a lot of running ended...
+        # leading to me doing more interesting stuff with the above sort keys
+        if these_events[-1].type == "running_ended":
+            raise RuntimeError(f"Events list ended with running_ended: {these_events}")
+
+        if these_events[-1].type == "parsl.task.states.running_ended":
+            raise RuntimeError(f"Events list ended with parsl.task.states.running_ended: {these_events}")
 
         plot_events[these_events[0].type].append((these_events[0].time, 1))
         prev_event_type = these_events[0].type
