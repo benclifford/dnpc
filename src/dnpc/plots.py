@@ -435,6 +435,36 @@ def plot_tasks_running_streamgraph_wq_by_type(db_context):
 
             context = Context.new_root_context()
             task_events = []
+
+            # find the allocation of this task to a worker node
+            try_subcontexts = task_context.subcontexts_by_type("parsl.try")
+            if len(try_subcontexts) != 1:
+                continue
+                # skip any task with multiple tries or with no tries
+                # (although the no-tries case should have been eliminated already)
+            try_context =  try_subcontexts[0]
+
+            wq_subcontexts = try_context.subcontexts_by_type("parsl.try.executor")
+            if len(wq_subcontexts) != 1:
+                continue # skip task with missing wq events
+            wq_context = wq_subcontexts[0]
+            
+            # find the wq RUNNING event 
+               
+            wq_running_events = [e for e in wq_context.events if e.type == "RUNNING"]
+
+            if len(wq_running_events) == 1:
+                # skip this event with missing wq RUNNING
+
+                wq_running_event = wq_running_events[0]
+
+                e = Event()
+                e.type = "Worker prep"
+                e.time = wq_running_event.time
+                context.events.append(e)
+
+            # find the parsl running and end of running events:
+
             # this loop really should only happen once or zero, but there's not
             # nicer syntax for a Maybe rather than a List.
             for state_subcontext in task_context.subcontexts_by_type("parsl.task.states"):
@@ -466,7 +496,9 @@ def plot_tasks_running_streamgraph_wq_by_type(db_context):
             running_by_appname_contexts.append(context)
             
     # parsl task-level states
-    colour_states = {}
+    colour_states = {
+        'Worker prep': '#777777'
+    }
 
     # better hope there's enough for the number of apps
     # this code will raise an exception when there are
