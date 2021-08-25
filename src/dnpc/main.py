@@ -22,7 +22,8 @@ from dnpc.plots import (plot_workflows_cumul,
     plot_tasks_status_streamgraph_submit,
     plot_tasks_status_streamgraph_wq,
     plot_task_running_event_stacked_and_streamgraph_wq,
-    plot_execute_function_to_parsl_running_histo
+    plot_execute_function_to_parsl_running_histo,
+    plot_tasks_launched_streamgraph_wq_by_type
     )
 
 
@@ -74,10 +75,12 @@ def import_workflow_tasks(base_context: Context, db: sqlite3.Connection, run_id:
 
     cur = db.cursor()
 
-    for row in cur.execute(f"SELECT task_id, strftime('%s', task_time_invoked), strftime('%s',task_time_returned) FROM task WHERE run_id = '{run_id}'"):
+    for row in cur.execute(f"SELECT task_id, strftime('%s', task_time_invoked), strftime('%s',task_time_returned), task_func_name FROM task WHERE run_id = '{run_id}'"):
         task_id = row[0]
         task_context = base_context.get_context(task_id, "parsl.task")
         task_context.name = f"Task {task_id}"
+
+        task_context.parsl_func_name = row[3]
 
         summary_context = task_context.get_context("summary", "parsl.task.summary")
         summary_context.name = f"Task {task_id} summary"
@@ -398,6 +401,7 @@ def main() -> None:
     plot_tasks_status_streamgraph_wq(monitoring_db_context)
     plot_task_running_event_stacked_and_streamgraph_wq(monitoring_db_context)
     plot_execute_function_to_parsl_running_histo(monitoring_db_context)
+    plot_tasks_launched_streamgraph_wq_by_type(monitoring_db_context)
 
     logger.info("dnpc end")
 
