@@ -23,7 +23,8 @@ from dnpc.plots import (plot_workflows_cumul,
     plot_tasks_status_streamgraph_wq,
     plot_task_running_event_stacked_and_streamgraph_wq,
     plot_execute_function_to_parsl_running_histo,
-    plot_tasks_launched_streamgraph_wq_by_type
+    plot_tasks_launched_streamgraph_wq_by_type,
+    plot_tasks_running_streamgraph_wq_by_type
     )
 
 
@@ -402,6 +403,7 @@ def main() -> None:
     plot_task_running_event_stacked_and_streamgraph_wq(monitoring_db_context)
     plot_execute_function_to_parsl_running_histo(monitoring_db_context)
     plot_tasks_launched_streamgraph_wq_by_type(monitoring_db_context)
+    plot_tasks_running_streamgraph_wq_by_type(monitoring_db_context)
 
     logger.info("dnpc end")
 
