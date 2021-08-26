@@ -78,7 +78,7 @@ class Context:
     type: str
     name: str
     _subcontexts: Dict[str, "Context"]
-    events: List[Event]
+    _events: List[Event]
 
     # if aliased is set, this means that we've had an alias set after
     # multiple contexts already exist. This should point to a more
@@ -90,6 +90,7 @@ class Context:
         self._subcontexts = {}
         self._events = []
         self.name = "unnamed"
+        self.type = "untyped"
         self.aliased = None
 
     def __repr__(self):
@@ -159,6 +160,15 @@ class Context:
                 # event append? I don't think there are any consistency rules
                 # that need validating.
                 a._events += b._events 
+
+                for k in b.__dict__:
+                    if k in ['_subcontexts', '_events', 'name', 'type', 'aliased']:
+                        # skip implementation details
+                        continue
+                    if k in a.__dict__:
+                        assert a.__dict__[k] == b.__dict__[k]
+                    else:
+                        a.__dict__[k] = b.__dict__[k]
 
                 # Each subcontext in b now needs to be aliased into a under
                 # the same key.
