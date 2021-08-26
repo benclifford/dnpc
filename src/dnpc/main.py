@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import re
@@ -24,7 +25,8 @@ from dnpc.plots import (plot_workflows_cumul,
     plot_task_running_event_stacked_and_streamgraph_wq,
     plot_execute_function_to_parsl_running_histo,
     plot_tasks_launched_streamgraph_wq_by_type,
-    plot_tasks_running_streamgraph_wq_by_type
+    plot_tasks_running_streamgraph_wq_by_type,
+    plot_tasks_running_streamgraph_wq_by_type_mem_weighted
     )
 
 
@@ -219,6 +221,20 @@ def import_work_queue_transaction_log(base_context, rundir):
                 event.type = status
                 wq_task_context.events.append(event)
 
+                # now check if this was a running message with resource annotation
+                # and if so, parse out the resource json:
+                # 1629846648874121 200544 TASK 1 RUNNING 10.128.9.197:58802  FIRST_RESOURCES {"memory":[2700,"MB "],"disk":[0,"MB"],"gpus":[0,"gpus"],"cores":[1,"cores"]}
+                rm = re.match('([0-9]+) [0-9]+ TASK ([0-9]+) RUNNING .* FIRST_RESOURCES ({.*})$', line)
+                if rm:
+                    resources_json = rm.group(3)
+                    # now annotate the wq_task_context with the memory usage value
+                    resources = json.loads(resources_json)
+
+                    assert resources['memory'][1] == 'MB'
+                    # might encounter other units sometime, and need to normalise?
+                    wq_task_context.wq_resource_memory = int(resources['memory'][0]) 
+
+
     logger.info("Done importing Work Queue transaction log")
 
 
@@ -406,6 +422,7 @@ def main() -> None:
     plot_execute_function_to_parsl_running_histo(monitoring_db_context)
     plot_tasks_launched_streamgraph_wq_by_type(monitoring_db_context)
     plot_tasks_running_streamgraph_wq_by_type(monitoring_db_context)
+    plot_tasks_running_streamgraph_wq_by_type_mem_weighted(monitoring_db_context)
 
     logger.info("dnpc end")
 

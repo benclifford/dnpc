@@ -525,6 +525,125 @@ def plot_tasks_running_streamgraph_wq_by_type(db_context):
     plot_context_streamgraph(running_by_appname_contexts, "dnpc-appname-running-on-wq.png", state_config=colour_states)
 
 
+def plot_tasks_running_streamgraph_wq_by_type_mem_weighted(db_context):
+    """Show a stacked plot of tasks in launched state, for the work_queue executor,
+    coloured by the app name. This is to investigate relative queue lengths for
+    different apps, to see if queue emptying is changing the qualitative behaviour
+    of the run."""
+
+    # get every task
+    # then make a new collection of contexts, where every task context is mapped
+    # to a new context with a start/end event labelled by its app name.
+
+    running_by_appname_contexts = []
+    appnames = set()
+
+    for wf_context in db_context.subcontexts_by_type("parsl.workflow"):
+        for task_context in wf_context.subcontexts_by_type("parsl.task"):
+
+            # select only tasks that we want: that is, tasks that have a try
+            # in the wq executor.
+            select = False
+            for try_subcontext in task_context.subcontexts_by_type("parsl.try"):
+                if hasattr(try_subcontext, 'parsl_executor') and try_subcontext.parsl_executor == "work_queue":
+                    select = True
+            if not select:
+                continue
+                
+
+            context = Context.new_root_context()
+
+            # find the allocation of this task to a worker node
+            try_subcontexts = task_context.subcontexts_by_type("parsl.try")
+            if try_subcontexts == []:
+                continue  # skip no-tries case
+
+
+            for try_context in try_subcontexts:
+                try_context =  try_subcontexts[0]
+
+                wq_subcontexts = try_context.subcontexts_by_type("parsl.try.executor")
+                if len(wq_subcontexts) != 1:
+                    continue # skip tries with missing wq events
+                wq_context = wq_subcontexts[0]
+
+                if hasattr(wq_context, "wq_resource_memory"):
+                    context.plot_weight = wq_context.wq_resource_memory
+            
+                # find the wq RUNNING event 
+               
+                wq_running_events = [e for e in wq_context.events if e.type == "RUNNING"]
+
+                if len(wq_running_events) == 1:
+                    # skip this event with missing wq RUNNING
+
+                    wq_running_event = wq_running_events[0]
+
+                    e = Event()
+                    e.type = "Worker prep"
+                    e.time = wq_running_event.time
+                    context.events.append(e)
+
+            # find the parsl running and end of running events:
+
+            # this loop really should only happen once or zero, but there's not
+            # nicer syntax for a Maybe rather than a List.
+            task_events = []
+            for state_subcontext in task_context.subcontexts_by_type("parsl.task.states"):
+                task_events += state_subcontext.events
+          
+            start_events = [e for e in task_events if e.type == "running"]
+            if start_events == []:
+                continue  # task was never launched
+
+            for start_event in start_events:
+
+                e = Event()
+                e.type = task_context.parsl_func_name
+                e.time = start_event.time
+                context.events.append(e)
+                appnames.add(e.type)
+
+                next_events = [e for e in task_events if e.time > start_event.time]
+                if next_events != []: # then don't generate an end event
+                    next_events.sort(key=lambda e: e.time)
+                    next_event = next_events[0]
+
+                    e = Event()
+                    e.type = "beyond_running"
+                    e.time = next_event.time
+                    context.events.append(e)
+  
+            running_by_appname_contexts.append(context)
+            
+    # parsl task-level states
+    colour_states = {
+        'Worker prep': '#777777'
+    }
+
+    # better hope there's enough for the number of apps
+    # this code will raise an exception when there are
+    # too many apps to colour.
+    colour_list = [ "#FF0000",
+                    "#00FF00",
+                    "#FFFF00",
+                    "#0000FF",
+                    "#FF00FF",
+                    "#00FFFF"]
+
+    for func_name in appnames:
+        colour_states[func_name] = colour_list.pop()
+
+
+    # mute beyond_running because it dominates (total tasks vs running now don't work
+    # well on the same y axis) 
+    colour_states.update({
+        'beyond_running': None,
+    })
+
+    plot_context_streamgraph(running_by_appname_contexts, "dnpc-appname-running-on-wq-mem-weighted.png", state_config=colour_states)
+
+
 def plot_tries_cumul(db_context):
     """Given a DB context, plot cumulative state transitions of all tries of all tasks of all workflows"""
 
@@ -931,11 +1050,16 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
         # if these_events[-1].type == "parsl.task.states.running_ended":
         #    raise RuntimeError(f"Events list ended with parsl.task.states.running_ended: {these_events}")
 
-        plot_events[these_events[0].type].append((these_events[0].time, 1))
+        if hasattr(s, "plot_weight"):
+            weight = s.plot_weight
+        else:
+            weight = 1
+
+        plot_events[these_events[0].type].append((these_events[0].time, weight))
         prev_event_type = these_events[0].type
         for e in these_events[1:]:
-            plot_events[e.type].append((e.time, 1))
-            plot_events[prev_event_type].append((e.time, -1))
+            plot_events[e.type].append((e.time, weight))
+            plot_events[prev_event_type].append((e.time, -weight))
             prev_event_type = e.type
         # if prev_event_type != "exec_done":
         #    raise RuntimeError(f"did not end on exec_done: {prev_event_type}, {these_events}")
