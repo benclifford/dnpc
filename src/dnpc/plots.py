@@ -342,11 +342,14 @@ def plot_tasks_launched_streamgraph_wq_by_type(db_context):
             # in the wq executor.
             select = False
             for try_subcontext in task_context.subcontexts_by_type("parsl.try"):
-                if try_subcontext.parsl_executor == "work_queue":
+                if hasattr(try_subcontext, "parsl_executor") and try_subcontext.parsl_executor == "work_queue":
                     select = True
             if not select:
                 continue
                 
+
+            # TODO: to deal with retries, this launched event mapping code needs
+            # to cope with multiple ->launched->other transitions
 
             context = Context.new_root_context()
             task_events = []
@@ -359,26 +362,24 @@ def plot_tasks_launched_streamgraph_wq_by_type(db_context):
             if launched_events == []:
                 continue  # task was never launched
 
-            assert len(launched_events) == 1
-            launched_event = launched_events[0]
-
-            e = Event()
-            e.type = task_context.parsl_func_name
-            e.time = launched_event.time
-            context.events.append(e)
-            appnames.add(e.type)
-
-            # don't really care what the next event is - just that there was one
-            # that took this task out of launched state
-            next_events = [e for e in task_events if e.time > launched_event.time]
-            if next_events != []: # then don't generate an end event
-                next_events.sort(key=lambda e: e.time)
-                next_event = next_events[0]
-
+            for launched_event in launched_events:  # might be several due to retries
                 e = Event()
-                e.type = "beyond_launched"
-                e.time = next_event.time
+                e.type = task_context.parsl_func_name
+                e.time = launched_event.time
                 context.events.append(e)
+                appnames.add(e.type)
+
+                # don't really care what the next event is - just that there was one
+                # that took this task out of launched state
+                next_events = [e for e in task_events if e.time > launched_event.time]
+                if next_events != []: # then don't generate an end event
+                    next_events.sort(key=lambda e: e.time)
+                    next_event = next_events[0]
+
+                    e = Event()
+                    e.type = "beyond_launched"
+                    e.time = next_event.time
+                    context.events.append(e)
   
             launched_by_appname_contexts.append(context)
             
@@ -398,9 +399,10 @@ def plot_tasks_launched_streamgraph_wq_by_type(db_context):
     for func_name in appnames:
         colour_states[func_name] = colour_list.pop()
 
- 
+
+    # mute beyond_launched because it dominates over what is in the queue 
     colour_states.update({
-        'beyond_launched': "#AAAAAA",
+        'beyond_launched': None,
     })
 
     plot_context_streamgraph(launched_by_appname_contexts, "dnpc-appname-launched-on-wq.png", state_config=colour_states)
@@ -427,46 +429,47 @@ def plot_tasks_running_streamgraph_wq_by_type(db_context):
             # in the wq executor.
             select = False
             for try_subcontext in task_context.subcontexts_by_type("parsl.try"):
-                if try_subcontext.parsl_executor == "work_queue":
+                if hasattr(try_subcontext, 'parsl_executor') and try_subcontext.parsl_executor == "work_queue":
                     select = True
             if not select:
                 continue
                 
 
             context = Context.new_root_context()
-            task_events = []
 
             # find the allocation of this task to a worker node
             try_subcontexts = task_context.subcontexts_by_type("parsl.try")
-            if len(try_subcontexts) != 1:
-                continue
-                # skip any task with multiple tries or with no tries
-                # (although the no-tries case should have been eliminated already)
-            try_context =  try_subcontexts[0]
+            if try_subcontexts == []:
+                continue  # skip no-tries case
 
-            wq_subcontexts = try_context.subcontexts_by_type("parsl.try.executor")
-            if len(wq_subcontexts) != 1:
-                continue # skip task with missing wq events
-            wq_context = wq_subcontexts[0]
+
+            for try_context in try_subcontexts:
+                try_context =  try_subcontexts[0]
+
+                wq_subcontexts = try_context.subcontexts_by_type("parsl.try.executor")
+                if len(wq_subcontexts) != 1:
+                    continue # skip tries with missing wq events
+                wq_context = wq_subcontexts[0]
             
-            # find the wq RUNNING event 
+                # find the wq RUNNING event 
                
-            wq_running_events = [e for e in wq_context.events if e.type == "RUNNING"]
+                wq_running_events = [e for e in wq_context.events if e.type == "RUNNING"]
 
-            if len(wq_running_events) == 1:
-                # skip this event with missing wq RUNNING
+                if len(wq_running_events) == 1:
+                    # skip this event with missing wq RUNNING
 
-                wq_running_event = wq_running_events[0]
+                    wq_running_event = wq_running_events[0]
 
-                e = Event()
-                e.type = "Worker prep"
-                e.time = wq_running_event.time
-                context.events.append(e)
+                    e = Event()
+                    e.type = "Worker prep"
+                    e.time = wq_running_event.time
+                    context.events.append(e)
 
             # find the parsl running and end of running events:
 
             # this loop really should only happen once or zero, but there's not
             # nicer syntax for a Maybe rather than a List.
+            task_events = []
             for state_subcontext in task_context.subcontexts_by_type("parsl.task.states"):
                 task_events += state_subcontext.events
           
@@ -474,24 +477,23 @@ def plot_tasks_running_streamgraph_wq_by_type(db_context):
             if start_events == []:
                 continue  # task was never launched
 
-            assert len(start_events) == 1
-            start_event = start_events[0]
-
-            e = Event()
-            e.type = task_context.parsl_func_name
-            e.time = start_event.time
-            context.events.append(e)
-            appnames.add(e.type)
-
-            next_events = [e for e in task_events if e.time > start_event.time]
-            if next_events != []: # then don't generate an end event
-                next_events.sort(key=lambda e: e.time)
-                next_event = next_events[0]
+            for start_event in start_events:
 
                 e = Event()
-                e.type = "beyond_running"
-                e.time = next_event.time
+                e.type = task_context.parsl_func_name
+                e.time = start_event.time
                 context.events.append(e)
+                appnames.add(e.type)
+
+                next_events = [e for e in task_events if e.time > start_event.time]
+                if next_events != []: # then don't generate an end event
+                    next_events.sort(key=lambda e: e.time)
+                    next_event = next_events[0]
+
+                    e = Event()
+                    e.type = "beyond_running"
+                    e.time = next_event.time
+                    context.events.append(e)
   
             running_by_appname_contexts.append(context)
             
@@ -1015,12 +1017,15 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
             c_n += 1
         logger.info(f"plot_context_streamgraph: {event_type}: done")
 
+    x_base = canonical_x_axis[0]
+    shifted_x_axis = [x - x_base for x in canonical_x_axis]
+
     logger.info("plot_context_streamgraph: iterating over baselines")
     for baseline in ['zero', 'wiggle']:
         fig = plt.figure(figsize=(16, 10))
         ax = fig.add_subplot(1, 1, 1)
 
-        ax.stackplot(canonical_x_axis, ys, labels=labels, colors=colors, baseline=baseline)
+        ax.stackplot(shifted_x_axis, ys, labels=labels, colors=colors, baseline=baseline)
         ax.legend(loc='upper left')
         plt.title(f"Contexts in each state by time ({baseline} baseline)")
 

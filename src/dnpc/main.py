@@ -45,7 +45,7 @@ def import_workflow_task_tries(base_context: Context, db: sqlite3.Connection, ru
         try_id = row[0]
 
         try_context = base_context.get_context(try_id, "parsl.try")
-        try_context.name = f"Try {try_id} on executor {row[4]}"
+        try_context.name = f"Try {try_id} on executor {row[4]} via db importer"
 
         if row[1]:  # omit this event if it is NULL
             launched_event = Event()
@@ -373,8 +373,10 @@ def main() -> None:
     # for exmaple if moved into an archive area or to a different system.
     # The parsl monitoring DB at least contains hard-coded paths - this
     # map will swap the original prefix for the new prefix.
-    parsl_rundir_map = ("/global/cscratch1/sd/bxc/run202108/gen3_workflow/runinfo/",
-                        "/home/benc/parsl/src/parsl/bps2/")
+    # parsl_rundir_map = ("/global/cscratch1/sd/bxc/run202108/gen3_workflow/runinfo/",
+    #                    "/home/benc/parsl/src/parsl/bps2/")
+    parsl_rundir_map = ("/global/cscratch1/sd/jchiang8/desc/gen3_tests/w_2021_34/runinfo/",
+                       "/home/benc/parsl/src/parsl/bps3-jim/")
 
     import_monitoring_db(root_context, "./monitoring.db", rundir_map = parsl_rundir_map, parsl_tz_shift= 7.0 * 3600.0)
 
