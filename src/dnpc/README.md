@@ -153,3 +153,20 @@ logging/tracking perspective
 
 this code cannot be very prescriptive about how a component records its
 event information.
+
+
+
+see https://en.wikipedia.org/wiki/Entity_component_system for a game-dev related
+view of how to have entities but we're unclear what properties those different entities
+will have (in dnpc case, because it depends on what was imported from where)
+
+
+In an OO system (eg parsl), objects have a spatially-but-not-temporally unique ID
+within the RTS: id(self). This can be used as a log line correlator with the caveat that
+it can be non-unique across a run, but not overlapping time-wise. So it can't form
+in itself a unique context ID without further assumptions (eg that no dealloc happens
+of identified objects)
+Probs be aware of surrogate keys vs natural keys - eg do we trust the layer above
+to only ever submit "task 3" once? (... no, so use a surrogate key as in each layer
+generates its own unique keys, with a correlator)
+
