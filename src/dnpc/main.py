@@ -84,6 +84,7 @@ def import_workflow_tasks(base_context: Context, db: sqlite3.Connection, run_id:
         task_context.name = f"Task {task_id}"
 
         task_context.parsl_func_name = row[3]
+        task_context.parsl_task_id = task_id
 
         summary_context = task_context.get_context("summary", "parsl.task.summary")
         summary_context.name = f"Task {task_id} summary"
@@ -286,8 +287,8 @@ def import_workflow(base_context: Context, db: sqlite3.Connection, run_id: str, 
             # as ended.
             end_event = Event()
             end_event.type = "end"
-            end_event.time = float(row[1])
-            context.events.append(end_event) + parsl_tz_shift
+            end_event.time = float(row[1]) + parsl_tz_shift
+            context.events.append(end_event)
 
         rundir = row[2]
         # TODO: we'll get the last rundir silently discarding
@@ -295,8 +296,13 @@ def import_workflow(base_context: Context, db: sqlite3.Connection, run_id: str, 
         # rather than giving an error...
 
     # rewrite the rundir using the rundir map
+    logger.info(f"Remap attempt: rundir={rundir} prefix={rundir_map[0]}")
     if rundir.startswith(rundir_map[0]):
+        logger.info(f"Remapping rundir: {rundir}")
         rundir = rundir_map[1] + rundir.removeprefix(rundir_map[0])
+        logger.info(f"Remapped rundir: {rundir}")
+    else:
+        logger.info("Not remapping rundir")
 
     import_workflow_tasks(context, db, run_id, parsl_tz_shift)
 
@@ -389,10 +395,14 @@ def main() -> None:
     # for exmaple if moved into an archive area or to a different system.
     # The parsl monitoring DB at least contains hard-coded paths - this
     # map will swap the original prefix for the new prefix.
-    # parsl_rundir_map = ("/global/cscratch1/sd/bxc/run202108/gen3_workflow/runinfo/",
-    #                    "/home/benc/parsl/src/parsl/bps2/")
-    parsl_rundir_map = ("/global/cscratch1/sd/jchiang8/desc/gen3_tests/w_2021_34/runinfo/",
-                       "/home/benc/parsl/src/parsl/bps3-jim/")
+    # BUG: this needs to be without the / suffix if it points to the whole
+    # rundir. that would mess up situations where the run-id has gone up beyond 999
+    # and so has prefixes that overlap. eg 012 is a prefix of 0123, while 012/ is
+    # not a prefix of 0123/
+    parsl_rundir_map = ("/global/cscratch1/sd/bxc/run202108/gen3_workflow/runinfo/012",
+                        "/home/benc/parsl/bps-run-20210919a")
+    #parsl_rundir_map = ("/global/cscratch1/sd/jchiang8/desc/gen3_tests/w_2021_34/runinfo/",
+    #                   "/home/benc/parsl/src/parsl/bps3-jim/")
 
     import_monitoring_db(root_context, "./monitoring.db", rundir_map = parsl_rundir_map, parsl_tz_shift= 7.0 * 3600.0)
 
@@ -404,7 +414,6 @@ def main() -> None:
     # all that is available is workflow start/end times but that should
     # allow plots of number of workflows in each state, which is a
     # building block to later plots.
-
     plot_workflows_cumul(monitoring_db_context)
     plot_tasks_summary_cumul(monitoring_db_context)
     plot_tasks_status_cumul(monitoring_db_context)
@@ -423,7 +432,6 @@ def main() -> None:
     plot_tasks_launched_streamgraph_wq_by_type(monitoring_db_context)
     plot_tasks_running_streamgraph_wq_by_type(monitoring_db_context)
     plot_tasks_running_streamgraph_wq_by_type_mem_weighted(monitoring_db_context)
-
     logger.info("dnpc end")
 
 

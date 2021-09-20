@@ -347,6 +347,8 @@ def plot_tasks_launched_streamgraph_wq_by_type(db_context):
             if not select:
                 continue
                 
+            if task_context.parsl_func_name == "wrapper": # in the run i'm looking at, wrapped should never appear on this graph
+                raise RuntimeError(f"got wrapper in plot for only wq (location 1), {task_context}, parsl task id {task_context.parsl_task_id}")
 
             # TODO: to deal with retries, this launched event mapping code needs
             # to cope with multiple ->launched->other transitions
@@ -365,6 +367,8 @@ def plot_tasks_launched_streamgraph_wq_by_type(db_context):
             for launched_event in launched_events:  # might be several due to retries
                 e = Event()
                 e.type = task_context.parsl_func_name
+                if e.type == "wrapper": # in the run i'm looking at, wrapped should never appear on this graph
+                    raise RuntimeError("got wrapper in plot for only wq (location 2)")
                 e.time = launched_event.time
                 context.events.append(e)
                 appnames.add(e.type)
