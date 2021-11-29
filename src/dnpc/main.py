@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import os
@@ -163,6 +164,32 @@ def import_parsl_log(base_context: Context, rundir: str) -> None:
                 context = executor_context.get_context(executor_id, "parsl.try.executor")
                 wq_context = executor_context.get_context("workqueue_task_ids", "wq.ids")
                 wq_task_context = wq_context.alias_context(wq_id, context)
+
+            # 2021-09-19 11:34:48.767 parsl.bps:601 [INFO]  GRAPH_EVALUATE_COMMAND_LINE 46913058699280 get_input_file_paths
+
+            m = re.match('([^ ]+ [^\.]+).([^ ]+) parsl.bps.* GRAPH_EVALUATE_COMMAND_LINE ([0-9]+) (.+)', line)
+            if m:
+                logger.info("Line matched parsl.bps GRAPH_EVALUATE_COMMAND_LINE")
+                timestamp = m.group(1)
+                fractime = m.group(2)
+                graph_id = m.group(3)
+                state = m.group(4)
+
+                if len(fractime) == 6:
+                    pass # ok
+                elif len(fractime) == 3:
+                    fractime += "000"  # pad to ms
+                else:
+                    raise ValueError(f"Cannot parse fractional time {fractime} as ms or us")
+                parsl_bps_context = base_context.get_context("parsl_bps", "parsl.bps")
+                graphs_context = parsl_bps_context.get_context("graph", "parsl.bps.graphs")
+                graph_context = graphs_context.get_context(graph_id, "parsl.bps.graph")
+
+                event = Event()
+                event.time = datetime.datetime.strptime(timestamp + "." + fractime, "%Y-%m-%d %H:%M:%S.%f")
+                event.type = state
+                graph_context.events.append(event)
+                
 
 
     logger.info("Finished importing parsl.log")
@@ -385,6 +412,30 @@ def import_monitoring_db(root_context: Context, dbname: str, rundir_map: (str, s
     return context
 
 
+def stats_total_in_bps_input_file_path(monitoring_db_context):
+
+    accum_time = 0  # seconds
+
+    # TODO: assumes only one workflow
+    wf_context = monitoring_db_context.subcontexts_by_type("parsl.workflow")[0]
+    parsl_bps_context = wf_context.subcontexts_by_type("parsl.bps")[0]
+    graphs_context = parsl_bps_context.subcontexts_by_type("parsl.bps.graphs")[0]
+    graph_context = graphs_context.subcontexts_by_type("parsl.bps.graph")[0]
+
+    # copy, rather than alias, the events list
+    next_events = [e for e in graph_context.events]
+
+    next_events.sort(key=lambda e: e.time)
+     
+    while next_events:
+        here_event = next_events.pop(0)
+        if here_event.type == "get_input_file_paths":
+          next_event = next_events.pop(0) # this will fail if that call never returned, eg due to forced run end
+          t = (next_event.time - here_event.time).total_seconds()
+          accum_time += t
+
+    logger.info(f"Accumulated time in bps get_input_file_paths: {accum_time}s")
+
 def main() -> None:
     set_stream_logger(name="dnpc", level = logging.INFO)
     logger.info("dnpc start")
@@ -399,8 +450,8 @@ def main() -> None:
     # rundir. that would mess up situations where the run-id has gone up beyond 999
     # and so has prefixes that overlap. eg 012 is a prefix of 0123, while 012/ is
     # not a prefix of 0123/
-    parsl_rundir_map = ("/global/cscratch1/sd/bxc/run202108/gen3_workflow/runinfo/012",
-                        "/home/benc/parsl/bps-run-20210919a")
+    parsl_rundir_map = ("/global/cscratch1/sd/bxc/run202108/gen3_workflow/runinfo/",
+                        "/home/benc/tmp/dd/")
     #parsl_rundir_map = ("/global/cscratch1/sd/jchiang8/desc/gen3_tests/w_2021_34/runinfo/",
     #                   "/home/benc/parsl/src/parsl/bps3-jim/")
 
@@ -432,6 +483,7 @@ def main() -> None:
     plot_tasks_launched_streamgraph_wq_by_type(monitoring_db_context)
     plot_tasks_running_streamgraph_wq_by_type(monitoring_db_context)
     plot_tasks_running_streamgraph_wq_by_type_mem_weighted(monitoring_db_context)
+    stats_total_in_bps_input_file_path(monitoring_db_context)
     logger.info("dnpc end")
 
 
