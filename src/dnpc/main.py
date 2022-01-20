@@ -166,8 +166,11 @@ def import_parsl_log(base_context: Context, rundir: str) -> None:
                 wq_task_context = wq_context.alias_context(wq_id, context)
 
             # 2021-09-19 11:34:48.767 parsl.bps:601 [INFO]  GRAPH_EVALUATE_COMMAND_LINE 46913058699280 get_input_file_paths
+            # or
+            # 2021-09-30 03:02:49 parsl.bps:595 MainProcess(45704) MainThread [INFO]  GRAPH_EVALUATE_COMMAND_LINE 46913303024400 format
+            # which is missing fractional timestamp... so that fractional part should be optional...
 
-            m = re.match('([^ ]+ [^\.]+).([^ ]+) parsl.bps.* GRAPH_EVALUATE_COMMAND_LINE ([0-9]+) (.+)', line)
+            m = re.match('([^ ]+ [^\.]+)(?:\.([0123456789]+))? parsl.bps.* GRAPH_EVALUATE_COMMAND_LINE ([0-9]+) (.+)', line)
             if m:
                 logger.info("Line matched parsl.bps GRAPH_EVALUATE_COMMAND_LINE")
                 timestamp = m.group(1)
@@ -175,12 +178,16 @@ def import_parsl_log(base_context: Context, rundir: str) -> None:
                 graph_id = m.group(3)
                 state = m.group(4)
 
-                if len(fractime) == 6:
+                if fractime is None or len(fractime) == 0:
+                    fractime = "000000"  # 0 microseconds
+                elif len(fractime) == 6:
                     pass # ok
                 elif len(fractime) == 3:
-                    fractime += "000"  # pad to ms
+                    fractime += "000"  # pad to microsecs
                 else:
-                    raise ValueError(f"Cannot parse fractional time {fractime} as ms or us")
+                    raise ValueError(f"Cannot parse fractional time {fractime} as ms or us - expecting either 0, 3 or 6 digits, from log line: {line}")
+#ValueError: Cannot parse fractional time 9 as ms or us - expecting either 3 or 6 symbols, from log line: 2021-09-30 03:02:49 parsl.bps:595 MainProcess(45704) MainThread [INFO]  GRAPH_EVALUATE_COMMAND_LINE 46913303024400 format
+
                 parsl_bps_context = base_context.get_context("parsl_bps", "parsl.bps")
                 graphs_context = parsl_bps_context.get_context("graph", "parsl.bps.graphs")
                 graph_context = graphs_context.get_context(graph_id, "parsl.bps.graph")
@@ -450,8 +457,10 @@ def main() -> None:
     # rundir. that would mess up situations where the run-id has gone up beyond 999
     # and so has prefixes that overlap. eg 012 is a prefix of 0123, while 012/ is
     # not a prefix of 0123/
+    # parsl_rundir_map = ("/global/cscratch1/sd/bxc/run202108/gen3_workflow/runinfo/",
+    #                    "/home/benc/tmp/dd/")
     parsl_rundir_map = ("/global/cscratch1/sd/bxc/run202108/gen3_workflow/runinfo/",
-                        "/home/benc/tmp/dd/")
+                        "/home/benc/parsl/src/dnpc/sample-data/cori1/")
     #parsl_rundir_map = ("/global/cscratch1/sd/jchiang8/desc/gen3_tests/w_2021_34/runinfo/",
     #                   "/home/benc/parsl/src/parsl/bps3-jim/")
 
