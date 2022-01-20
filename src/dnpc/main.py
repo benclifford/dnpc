@@ -33,43 +33,46 @@ from dnpc.plots import (plot_workflows_cumul,
 
 logger = logging.getLogger("dnpc.main")  # __name__ is not package qualified in __main__
 
-def import_workflow_task_tries(base_context: Context, db: sqlite3.Connection, run_id: str, task_id, parsl_tz_shift: float) -> None:
-    logger.debug(f"Importing tries for task {task_id}")
+def import_workflow_task_tries(base_context: Context, db: sqlite3.Connection, run_id: str, parsl_tz_shift: float) -> None:
+    logger.debug(f"Importing tries for all tasks in run {run_id}")
 
     cur = db.cursor()
 
     # this fractional seconds replacement for %s comes from (julianday('now') - 2440587.5)*86400.0
     # SELECT (julianday('now') - 2440587.5)*86400.0;
 
-    for row in cur.execute(f"SELECT try_id, (julianday(task_try_time_launched) - 2440587.5)*86400.0, "
+    for row in cur.execute(f"SELECT task_id, try_id, (julianday(task_try_time_launched) - 2440587.5)*86400.0, "
                            f"(julianday(task_try_time_running) - 2440587.5)*86400.0, (julianday(task_try_time_returned) - 2440587.5)*86400.0, "
                            f"task_executor "
-                           f"FROM try WHERE run_id = '{run_id}' AND task_id = '{task_id}'"):
-        try_id = row[0]
+                           f"FROM try WHERE run_id = '{run_id}'"):
+        task_id = row[0]
+        try_id = row[1]
 
-        try_context = base_context.get_context(try_id, "parsl.try")
+        task_context = base_context.get_context(task_id, "parsl.task")
+        try_context = task_context.get_context(try_id, "parsl.try")
+
         try_context.name = f"Try {try_id} on executor {row[4]} via db importer"
 
-        if row[1]:  # omit this event if it is NULL
+        if row[2]:  # omit this event if it is NULL
             launched_event = Event()
             launched_event.type = "launched"
-            launched_event.time = float(row[1]) + parsl_tz_shift
+            launched_event.time = float(row[2]) + parsl_tz_shift
             try_context.events.append(launched_event)
 
-        if row[2]:  # omit this event if it is NULL
+        if row[3]:  # omit this event if it is NULL
             running_event = Event()
             running_event.type = "running"
-            running_event.time = float(row[2]) + parsl_tz_shift
+            running_event.time = float(row[3]) + parsl_tz_shift
             try_context.events.append(running_event)
 
-        if row[3] is not None:
+        if row[4] is not None:
             # then the task returned
             returned_event = Event()
             returned_event.type = "returned"
-            returned_event.time = float(row[3]) + parsl_tz_shift
+            returned_event.time = float(row[4]) + parsl_tz_shift
             try_context.events.append(returned_event)
 
-        try_context.parsl_executor = row[4]
+        try_context.parsl_executor = row[5]
 
     return None
 
@@ -113,7 +116,7 @@ def import_workflow_tasks(base_context: Context, db: sqlite3.Connection, run_id:
             start_event.time = float(state_row[1]) + parsl_tz_shift
             state_context.events.append(start_event)
 
-        import_workflow_task_tries(task_context, db, run_id, task_id, parsl_tz_shift)
+    import_workflow_task_tries(base_context, db, run_id, parsl_tz_shift)
 
     return None
 
@@ -126,10 +129,13 @@ def import_parsl_log(base_context: Context, rundir: str) -> None:
     #    epf_context = wq_task_context.get_context("epf", "parsl.wq.exec_parsl_function")
 
     with open(f"{rundir}/parsl.log", "r") as logfile:
+        re1 = re.compile('.* Parsl task (.*) try (.*) launched on executor (.*) with executor id (.*)')
+        re2 = re.compile('.* Task ([0-9]+) submitted to WorkQueue with id ([0-9]+).*')
+        re3 = re.compile('([^ ]+ [^\.]+)(?:\.([0123456789]+))? parsl.bps.* GRAPH_EVALUATE_COMMAND_LINE ([0-9]+) (.+)')
         for line in logfile:
             # the key lines i want for now from parsl.log look like this:
             # Parsl task 562 try 0 launched on executor WorkQueueExecutor with executor id 337
-            m = re.match('.* Parsl task (.*) try (.*) launched on executor (.*) with executor id (.*)', line)
+            m = re1.match(line)
             if m:
                 logger.info(f"Line matched p->wqe bind: {line}, {m}")
                 task_id = m.group(1)
@@ -148,7 +154,7 @@ def import_parsl_log(base_context: Context, rundir: str) -> None:
                 executor_context.alias_context(executor_id, executor_id_context)
             # 2021-08-16 20:47:29.796 parsl.executors.workqueue.executor:933 [DEBUG]  Task 1 submitted to WorkQueue with id 2
 
-            m = re.match('.* Task ([0-9]+) submitted to WorkQueue with id ([0-9]+).*', line)
+            m = re2.match(line)
             if m:
                 logger.info(f"Line matched wqe->wq bind: {line}, {m}")
 
@@ -170,7 +176,7 @@ def import_parsl_log(base_context: Context, rundir: str) -> None:
             # 2021-09-30 03:02:49 parsl.bps:595 MainProcess(45704) MainThread [INFO]  GRAPH_EVALUATE_COMMAND_LINE 46913303024400 format
             # which is missing fractional timestamp... so that fractional part should be optional...
 
-            m = re.match('([^ ]+ [^\.]+)(?:\.([0123456789]+))? parsl.bps.* GRAPH_EVALUATE_COMMAND_LINE ([0-9]+) (.+)', line)
+            m = re3.match(line)
             if m:
                 logger.info("Line matched parsl.bps GRAPH_EVALUATE_COMMAND_LINE")
                 timestamp = m.group(1)
@@ -208,6 +214,7 @@ def import_work_queue_python_timing_log(base_context: Context, rundir: str):
     # would conflict.
     wq_context = base_context.get_context("work_queue", "parsl.executor")
     dirs = os.listdir(f"{rundir}/function_data/")
+    cre = re.compile('^([0-9\\.]+) ([^ ]+)\n$')
     for dir in dirs:
         wqe_task_id = str(int(dir))  # normalise away any leading zeros
         wq_task_context = wq_context.get_context(wqe_task_id, "parsl.try.executor")
@@ -218,7 +225,7 @@ def import_work_queue_python_timing_log(base_context: Context, rundir: str):
             with open(filename) as f:
                 for line in f:
                     # 1629049247.4333403 LOADFUNCTION
-                    m = re.match('^([0-9\\.]+) ([^ ]+)\n$', line)
+                    m = cre.match(line)
                     if m:
                         event = Event()
                         event.time = float(m.group(1))
@@ -243,8 +250,10 @@ def import_work_queue_transaction_log(base_context, rundir):
     # so should come from somewhere (eg log?) or * be used to find all
     # transaction logs?
     with open(f"{rundir}/{executor_name}/transaction_log") as transaction_log:
+        cre = re.compile('([0-9]+) [0-9]+ TASK ([0-9]+) ([^ ]+) .*')
+        cre2 = re.compile('([0-9]+) [0-9]+ TASK ([0-9]+) RUNNING .* FIRST_RESOURCES ({.*})$')
         for line in transaction_log:
-            m = re.match('([0-9]+) [0-9]+ TASK ([0-9]+) ([^ ]+) .*', line)
+            m = cre.match(line)
             if m:
                 logger.info(f"Line matched: {line}, {m}")
                 task_id = m.group(2)
@@ -259,7 +268,7 @@ def import_work_queue_transaction_log(base_context, rundir):
                 # now check if this was a running message with resource annotation
                 # and if so, parse out the resource json:
                 # 1629846648874121 200544 TASK 1 RUNNING 10.128.9.197:58802  FIRST_RESOURCES {"memory":[2700,"MB "],"disk":[0,"MB"],"gpus":[0,"gpus"],"cores":[1,"cores"]}
-                rm = re.match('([0-9]+) [0-9]+ TASK ([0-9]+) RUNNING .* FIRST_RESOURCES ({.*})$', line)
+                rm = cre2.match(line)
                 if rm:
                     resources_json = rm.group(3)
                     # now annotate the wq_task_context with the memory usage value
@@ -407,7 +416,10 @@ def import_monitoring_db(root_context: Context, dbname: str, rundir_map: (str, s
 
     cur = db.cursor()
 
-    for row in cur.execute("SELECT run_id FROM workflow"):
+    # TODO this limit 1 is to only import a single workflow
+    # select * from workflow order by time_began DESC limit 1;
+    # for row in cur.execute("SELECT run_id FROM workflow LIMIT 1"):
+    for row in cur.execute("SELECT run_id FROM workflow ORDER BY time_began DESC LIMIT 1"):
         run_id = row[0]
         logger.info(f"workflow: {run_id}")
 
