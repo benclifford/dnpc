@@ -1076,7 +1076,7 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
     canonical_x_axis_set = set()
     for t in event_types:
         these_x = [e[0] for e in plot_events[t]]
-        logger.info(f"these_x = {these_x}")
+        # logger.info(f"these_x = {these_x}")
         logger.info(f"event type {t} adding {len(these_x)} timestamps")
         logger.info(f"size before update: {len(canonical_x_axis_set)}")
         canonical_x_axis_set.update(these_x)
@@ -1114,25 +1114,33 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
         these_events.sort(key=lambda pe: pe[0])
 
         n = 0
+
+        # this sweep is very expensive and also done once per event type, making it even more expensive
+        # its 45s of runtime in an invocation of this function which takes 72s - about 60%
         logger.info(f"plot_context_streamgraph: {event_type}: sweeping x axis")
+
+        these_events_index = 0
+        these_events_len = len(these_events)
         for x in canonical_x_axis:
 
-            while len(these_events) > 0 and these_events[0][0] == x:
+            while these_events_index < these_events_len and these_events[these_events_index][0] == x:
                 # these asserts are very expensive, and covered by the
                 # assert right after the while loop
                 # assert these_events[0][0] in canonical_x_axis_set, "timestamp must be in x axis somewhere"
                 # assert these_events[0][0] in canonical_x_axis, "timestamp must be in x axis list somewhere"
-                n += these_events[0][1]
-                these_events = these_events[1:]
+                n += these_events[these_events_index][1]
+                these_events_index += 1
+                # these_events = these_events[1:]   # I suspect this is very expensive, recreating a new list each time...
+                                                    # so instead of this functional style, perhaps use an index into the list
 
-            assert len(these_events) == 0 or these_events[0][0] > x, "Next event must be in future"
+            assert these_events_index == these_events_len or these_events[these_events_index][0] > x, "Next event must be in future"
             y.append(n)
 
         logger.info(f"plot_context_streamgraph: {event_type}: done sweeping x axis")
         # logger.info(f"event type {event_type} event list {these_events} generated sequence {y}")
 
         # we should have used up all of the events for this event type
-        assert these_events == [], f"Some events remaining: {these_events}"
+        assert these_events_index == these_events_len, f"Some events remaining: index {these_events_index} is not length of list {these_events_len}"
 
         # logger.info(f"will plot event {event_type} with x={x} and y={y}")
 
