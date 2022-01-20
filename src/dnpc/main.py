@@ -417,8 +417,8 @@ def import_monitoring_db(root_context: Context, dbname: str, rundir_map: (str, s
 
     # TODO this limit 1 is to only import a single workflow
     # select * from workflow order by time_began DESC limit 1;
-    # for row in cur.execute("SELECT run_id FROM workflow LIMIT 1"):
-    for row in cur.execute("SELECT run_id FROM workflow ORDER BY time_began DESC LIMIT 1"):
+    # for row in cur.execute("SELECT run_id FROM workflow ORDER BY time_began DESC LIMIT 1"):
+    for row in cur.execute("SELECT run_id FROM workflow"):
         run_id = row[0]
         logger.info(f"workflow: {run_id}")
 
@@ -436,6 +436,10 @@ def stats_total_in_bps_input_file_path(monitoring_db_context):
 
     # TODO: assumes only one workflow
     wf_context = monitoring_db_context.subcontexts_by_type("parsl.workflow")[0]
+    if len(wf_context.subcontexts_by_type("parsl.bps")) < 1:
+        logger.info(f"no BPS context for workflow context {wf_context} to generate statistics over - skipping")
+        return
+
     parsl_bps_context = wf_context.subcontexts_by_type("parsl.bps")[0]
     graphs_context = parsl_bps_context.subcontexts_by_type("parsl.bps.graphs")[0]
     graph_context = graphs_context.subcontexts_by_type("parsl.bps.graph")[0]
