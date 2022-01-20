@@ -111,13 +111,13 @@ class Context:
         c = self._subcontexts.get(edge_name)
         if c is not None:
             assert(c.type == type)
-            logger.debug(f"get_context returning existing {type} context for key {edge_name}")
+            # logger.debug(f"get_context returning existing {type} context for key {edge_name}")
             return c
         else:
             c = Context()
             c.type = type
             self._subcontexts[edge_name] = c
-            logger.debug(f"get_context creating new {type} context for key {edge_name}")
+            # logger.debug(f"get_context creating new {type} context for key {edge_name}")
 
             return c
 
@@ -144,7 +144,7 @@ class Context:
                 # if so, then all of the interesting stuff is in the two
                 # most-aliased contexts, and it is those that need to be
                 # aliased
-                logger.debug(f"Aliasing context {context} with context {c} under key {edge_name}")
+                # logger.debug(f"Aliasing context {context} with context {c} under key {edge_name}")
                 a = c.most_aliased_context_obj()
                 b = context.most_aliased_context_obj()
 
