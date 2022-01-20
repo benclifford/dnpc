@@ -137,12 +137,12 @@ def import_parsl_log(base_context: Context, rundir: str) -> None:
             # Parsl task 562 try 0 launched on executor WorkQueueExecutor with executor id 337
             m = re1.match(line)
             if m:
-                logger.info(f"Line matched p->wqe bind: {line}, {m}")
+                # logger.info(f"Line matched p->wqe bind: {line}, {m}")
                 task_id = m.group(1)
-                logger.info(f"Task ID {task_id}")
+                # logger.info(f"Task ID {task_id}")
                 task_context = base_context.get_context(task_id, "parsl.task")
                 try_id = m.group(2)
-                logger.info(f"Try ID {try_id}")
+                # logger.info(f"Try ID {try_id}")
                 try_context = task_context.get_context(try_id, "parsl.try")
                 executor_id_context = try_context.get_context("executor", "parsl.try.executor")
                 # the point of this log file line is to alias it
@@ -156,11 +156,10 @@ def import_parsl_log(base_context: Context, rundir: str) -> None:
 
             m = re2.match(line)
             if m:
-                logger.info(f"Line matched wqe->wq bind: {line}, {m}")
+                # logger.info(f"Line matched wqe->wq bind: {line}, {m}")
 
                 executor_id = m.group(1)
                 wq_id = m.group(2)
-                print(f"BENC MATCH WQ: {executor_id}, {wq_id}.")
 
                 # WorkQueue is hard-coded in the parsl source for this
                 # log line... but need to properly disambiguate the executor
@@ -178,7 +177,7 @@ def import_parsl_log(base_context: Context, rundir: str) -> None:
 
             m = re3.match(line)
             if m:
-                logger.info("Line matched parsl.bps GRAPH_EVALUATE_COMMAND_LINE")
+                # logger.info("Line matched parsl.bps GRAPH_EVALUATE_COMMAND_LINE")
                 timestamp = m.group(1)
                 fractime = m.group(2)
                 graph_id = m.group(3)
@@ -255,10 +254,10 @@ def import_work_queue_transaction_log(base_context, rundir):
         for line in transaction_log:
             m = cre.match(line)
             if m:
-                logger.info(f"Line matched: {line}, {m}")
+                # logger.info(f"Line matched: {line}, {m}")
                 task_id = m.group(2)
                 status = m.group(3)
-                logger.info(f"WQ task {task_id} status {status}")
+                # logger.info(f"WQ task {task_id} status {status}")
                 wq_task_context = wq_context.get_context(task_id, "parsl.try.executor")
                 event = Event()
                 event.time = float(m.group(1)) / 1000000.0

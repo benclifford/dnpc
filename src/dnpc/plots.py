@@ -23,18 +23,18 @@ def plot_wq_running_to_parsl_running_histo(db_context):
 
     filtered_try_contexts = []
     for context in all_try_contexts:
-        logger.info(f"examining try context {context}")
+        # logger.info(f"examining try context {context}")
         # flatten event_types into a set
         event_types = set()
         for event in context.events:
             event_types.add(event.type)
 
         executor_contexts = context.subcontexts_by_type("parsl.try.executor")
-        logger.info(f"context.subcontexts = {context.subcontexts}")
-        logger.info(f"executor_contexts = {executor_contexts}")
+        # logger.info(f"context.subcontexts = {context.subcontexts}")
+        # logger.info(f"executor_contexts = {executor_contexts}")
         if len(executor_contexts) == 0:
             # raise RuntimeError(f"wrong number of executor contexts: {executor_contexts}") # temp dbg
-            logger.info(f"skipping because no executor_context")
+            # logger.info(f"skipping because no executor_context")
             continue
         elif len(executor_contexts) > 1:
             raise RuntimeError(f"Too many executor contexts: {executor_contexts}") # temp dbg
@@ -46,8 +46,8 @@ def plot_wq_running_to_parsl_running_histo(db_context):
         for event in pte_context.events:
             pte_event_types.add(event.type)
 
-        logger.info(f"event_types: {event_types}")
-        logger.info(f"pte_event_types: {pte_event_types}")
+        # logger.info(f"event_types: {event_types}")
+        # logger.info(f"pte_event_types: {pte_event_types}")
 
         if "running" in event_types and 'RUNNING' in pte_event_types:
             filtered_try_contexts.append(context)
@@ -64,7 +64,7 @@ def plot_wq_running_to_parsl_running_histo(db_context):
         parsl_running_event = running_events[0]  # we selected based on this event existing so [0] will always exist
 
         executor_contexts = context.subcontexts_by_type("parsl.try.executor")
-        logger.info(f"executor_contexts = {executor_contexts}")
+        # logger.info(f"executor_contexts = {executor_contexts}")
         assert(len(executor_contexts) == 1)
         pte_context = executor_contexts[0]
 
@@ -104,18 +104,18 @@ def plot_execute_function_to_parsl_running_histo(db_context):
 
     filtered_try_contexts = []
     for context in all_try_contexts:
-        logger.info(f"examining try context {context}")
+        # logger.info(f"examining try context {context}")
         # flatten event_types into a set
         event_types = set()
         for event in context.events:
             event_types.add(event.type)
 
         executor_contexts = context.subcontexts_by_type("parsl.try.executor")
-        logger.info(f"context.subcontexts = {context.subcontexts}")
-        logger.info(f"executor_contexts = {executor_contexts}")
+        # logger.info(f"context.subcontexts = {context.subcontexts}")
+        # logger.info(f"executor_contexts = {executor_contexts}")
         if len(executor_contexts) == 0:
             # raise RuntimeError(f"wrong number of executor contexts: {executor_contexts}") # temp dbg
-            logger.info(f"skipping because no executor_context")
+            # logger.info(f"skipping because no executor_context")
             continue
         elif len(executor_contexts) > 1:
             raise RuntimeError(f"Too many executor contexts: {executor_contexts}") # temp dbg
@@ -127,8 +127,8 @@ def plot_execute_function_to_parsl_running_histo(db_context):
         for event in pte_context.events:
             pte_event_types.add(event.type)
 
-        logger.info(f"event_types: {event_types}")
-        logger.info(f"pte_event_types: {pte_event_types}")
+        # logger.info(f"event_types: {event_types}")
+        # logger.info(f"pte_event_types: {pte_event_types}")
 
         if "running" in event_types and 'EXECUTEFUNCTION' in pte_event_types:
             filtered_try_contexts.append(context)
@@ -145,7 +145,7 @@ def plot_execute_function_to_parsl_running_histo(db_context):
         parsl_running_event = running_events[0]  # we selected based on this event existing so [0] will always exist
 
         executor_contexts = context.subcontexts_by_type("parsl.try.executor")
-        logger.info(f"executor_contexts = {executor_contexts}")
+        # logger.info(f"executor_contexts = {executor_contexts}")
         assert(len(executor_contexts) == 1)
         epf_contexts = executor_contexts[0].subcontexts_by_type("parsl.wq.exec_parsl_function")
         assert(len(epf_contexts) == 1)
@@ -988,7 +988,7 @@ def plot_task_running_event_stacked_and_streamgraph_wq(db_context):
             #    f"Bad final end state for event list {collapsed_context.events}"
             all_state_subcontexts.add(collapsed_context)
 
-            logger.info(f"BENC context events: {collapsed_context.events}")
+            # logger.info(f"BENC context events: {collapsed_context.events}")
 
     logger.info("post-shared-processing - starting plot")
     plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-running-event-wq.png", state_config=config_states)
