@@ -75,7 +75,7 @@ def plot_wq_running_to_parsl_running_histo(db_context):
 
         xs.append(runtime)
 
-    logger.info(f"histo data for runtime: {xs}")
+    # logger.info(f"histo data for runtime: {xs}")
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
@@ -158,7 +158,7 @@ def plot_execute_function_to_parsl_running_histo(db_context):
 
         xs.append(runtime)
 
-    logger.info(f"histo data for runtime: {xs}")
+    # logger.info(f"histo data for runtime: {xs}")
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
@@ -209,7 +209,7 @@ def plot_tries_runtime_histo_wq(db_context):
 
         xs.append(runtime)
 
-    logger.info(f"histo data for runtime: {xs}")
+    # logger.info(f"histo data for runtime: {xs}")
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
@@ -260,7 +260,7 @@ def plot_tries_runtime_histo_submit(db_context):
 
         xs.append(runtime)
 
-    logger.info(f"histo data for runtime: {xs}")
+    # logger.info(f"histo data for runtime: {xs}")
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
@@ -310,7 +310,7 @@ def plot_wq_task_runtime_histo(db_context):
 
         xs.append(runtime)
 
-    logger.info(f"histo data for runtime: {xs}")
+    # logger.info(f"histo data for runtime: {xs}")
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
@@ -661,7 +661,7 @@ def plot_tries_cumul(db_context):
             for try_subcontext in task_context.subcontexts_by_type("parsl.try"):
                 all_subcontext_events += try_subcontext.events
 
-    logger.info(f"all subcontext events: {all_subcontext_events}")
+    # logger.info(f"all subcontext events: {all_subcontext_events}")
 
     event_types = set()
 
@@ -689,7 +689,7 @@ def plot_tries_cumul(db_context):
             x.append(event.time)
             y.append(n)
 
-        logger.info(f"will plot event {event_type} with x={x} and y={y}")
+        # logger.info(f"will plot event {event_type} with x={x} and y={y}")
         ax.plot(x, y, label=f"{event_type}")
 
     ax.legend()
@@ -711,7 +711,7 @@ def plot_tasks_summary_cumul(db_context):
             for state_subcontext in task_context.subcontexts_by_type("parsl.task.summary"):
                 all_subcontext_events += state_subcontext.events
 
-    logger.info(f"all subcontext events: {all_subcontext_events}")
+    # logger.info(f"all subcontext events: {all_subcontext_events}")
 
     event_types = set()
 
@@ -739,7 +739,7 @@ def plot_tasks_summary_cumul(db_context):
             x.append(event.time)
             y.append(n)
 
-        logger.info(f"will plot event {event_type} with x={x} and y={y}")
+        # logger.info(f"will plot event {event_type} with x={x} and y={y}")
         ax.plot(x, y, label=f"{event_type}")
 
     ax.legend()
@@ -761,7 +761,7 @@ def plot_tasks_status_cumul(db_context):
             for state_subcontext in task_context.subcontexts_by_type("parsl.task.states"):
                 all_subcontext_events += state_subcontext.events
 
-    logger.info(f"all subcontext events: {all_subcontext_events}")
+    # logger.info(f"all subcontext events: {all_subcontext_events}")
 
     event_types = set()
 
@@ -789,7 +789,7 @@ def plot_tasks_status_cumul(db_context):
             x.append(event.time)
             y.append(n)
 
-        logger.info(f"will plot event {event_type} with x={x} and y={y}")
+        # logger.info(f"will plot event {event_type} with x={x} and y={y}")
         ax.plot(x, y, label=f"{event_type}")
 
     ax.legend()
@@ -1189,7 +1189,7 @@ def plot_all_task_events_cumul(db_context, filename="dnpc-all-task-events-cumul.
             for state_context in task_context.subcontexts_by_type("parsl.task.states"): 
                 all_subcontext_events += state_context.events
 
-    logger.info(f"all subcontext events: {all_subcontext_events}")
+    # logger.info(f"all subcontext events: {all_subcontext_events}")
 
     event_types = set()
 
@@ -1217,7 +1217,7 @@ def plot_all_task_events_cumul(db_context, filename="dnpc-all-task-events-cumul.
             x.append(event.time)
             y.append(n)
 
-        logger.info(f"will plot event {event_type} with x={x} and y={y}")
+        # logger.info(f"will plot event {event_type} with x={x} and y={y}")
         ax.plot(x, y, label=f"{event_type}")
 
     ax.legend()
@@ -1239,7 +1239,7 @@ def plot_wq_parsl_worker_cumul(db_context):
                 for wq_subcontext in try_subcontext.subcontexts_by_type("parsl.try.executor"):
                     all_subcontext_events += wq_subcontext.events
 
-    logger.info(f"all subcontext events: {all_subcontext_events}")
+    # logger.info(f"all subcontext events: {all_subcontext_events}")
 
     event_types = set()
 
@@ -1267,7 +1267,7 @@ def plot_wq_parsl_worker_cumul(db_context):
             x.append(event.time)
             y.append(n)
 
-        logger.info(f"will plot event {event_type} with x={x} and y={y}")
+        # logger.info(f"will plot event {event_type} with x={x} and y={y}")
         ax.plot(x, y, label=f"{event_type}")
 
     ax.legend()
