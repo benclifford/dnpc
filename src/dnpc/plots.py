@@ -1314,6 +1314,7 @@ def plot_parsl_workflows_cumul(db_context):
         ax.plot(x, y, label=f"{event_type}")
 
     ax.legend()
+    fig.autofmt_xdate()
     plt.title("cumulative monitoring.db workflow events over time")
 
     plt.savefig("dnpc-workflows-cumul.png")
