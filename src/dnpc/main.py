@@ -105,7 +105,11 @@ def main() -> None:
     logger.info("Replacing monitoring db context with a setset of it")
 
     # what might a helper method look like? select-by with a lambda?
-    
+
+    monitoring_db_context = monitoring_db_context.select_subcontexts(lambda key, ctx: key == "849c455b-e807-45ae-a188-04ab1c906e86")
+
+    # this is a map-style select ^
+    # there might also be a fold style "select the latest..." ?
 
     plot_parsl_workflows_cumul(monitoring_db_context)
     plot_tasks_summary_cumul(monitoring_db_context)

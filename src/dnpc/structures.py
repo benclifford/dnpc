@@ -211,3 +211,14 @@ class Context:
 
     def subcontexts_by_type(self, typename):
         return [c for c in self.subcontexts if c.type == typename] 
+
+    def select_subcontexts(self, predicate):
+        if self.aliased is not None:
+            return self.aliased.select_subcontexts(predicate)
+
+        new_context = Context.new_root_context()
+        for key, ctx in self._subcontexts.items():
+            if predicate(key, ctx):
+                new_context.alias_context(key, ctx)
+        return new_context
+
