@@ -211,6 +211,9 @@ class Context:
         return self._events
 
     def subcontexts_by_type(self, typename):
+        # no alias checking here, but self.subcontexts is aliased so
+        # the appropriate aliasing happens there.
+
         return [c for c in self.subcontexts if c.type == typename]
 
     def select_subcontexts(self, predicate):
