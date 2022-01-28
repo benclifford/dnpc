@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
+
 class Event:
     """An Event in a context. This is deliberately minimal.
     The new state is represented as a string, which should make
@@ -95,7 +96,10 @@ class Context:
 
     def __repr__(self):
         if self.aliased is None:
-            return f"<Context @{id(self)} {self.type} ({self.name}) with {len(self._subcontexts)} subcontexts, {len(self.events)} events>"
+            return (f"<Context @{id(self)} {self.type} "
+                    f"({self.name}) with "
+                    f"{len(self._subcontexts)} subcontexts, "
+                    f"{len(self.events)} events>")
         else:
             return f"<Context @{id(self)} aliased to {self.aliased}"
 
@@ -103,7 +107,6 @@ class Context:
     def new_root_context(cls):
         return Context()
 
-    #    context = root_context.get_context("monitoring", "parsl.monitoring.db")
     def get_context(self, edge_name, type):
         if self.aliased is not None:
             return self.aliased.get_context(edge_name, type)
@@ -111,13 +114,11 @@ class Context:
         c = self._subcontexts.get(edge_name)
         if c is not None:
             assert(c.type == type)
-            # logger.debug(f"get_context returning existing {type} context for key {edge_name}")
             return c
         else:
             c = Context()
             c.type = type
             self._subcontexts[edge_name] = c
-            # logger.debug(f"get_context creating new {type} context for key {edge_name}")
 
             return c
 
@@ -138,13 +139,13 @@ class Context:
                 # there are two Context objects that this call is declaring
                 # represent the same context, so need to alias them.
                 # pick one object to be more canonical than the other.
-                # but DANGER! both (or either) context objects might already be aliased
-                # to other contexts already in which case there's a whole group of
-                # contexts to alias?
+                # but DANGER! both (or either) context objects might
+                # already be aliased
+                # to other contexts already in which case there's a whole
+                # group of # contexts to alias?
                 # if so, then all of the interesting stuff is in the two
                 # most-aliased contexts, and it is those that need to be
                 # aliased
-                # logger.debug(f"Aliasing context {context} with context {c} under key {edge_name}")
                 a = c.most_aliased_context_obj()
                 b = context.most_aliased_context_obj()
 
@@ -153,16 +154,16 @@ class Context:
                 assert a.aliased is None
                 assert b.aliased is None
 
-
                 # move the contents of b into a
 
                 # TODO: should there be any checking for consistency in this
                 # event append? I don't think there are any consistency rules
                 # that need validating.
-                a._events += b._events 
+                a._events += b._events
 
                 for k in b.__dict__:
-                    if k in ['_subcontexts', '_events', 'name', 'type', 'aliased']:
+                    if k in ['_subcontexts', '_events', 'name',
+                             'type', 'aliased']:
                         # skip implementation details
                         continue
                     if k in a.__dict__:
@@ -210,7 +211,7 @@ class Context:
         return self._events
 
     def subcontexts_by_type(self, typename):
-        return [c for c in self.subcontexts if c.type == typename] 
+        return [c for c in self.subcontexts if c.type == typename]
 
     def select_subcontexts(self, predicate):
         if self.aliased is not None:
@@ -221,4 +222,3 @@ class Context:
             if predicate(key, ctx):
                 new_context.alias_context(key, ctx)
         return new_context
-
