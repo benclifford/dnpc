@@ -1,6 +1,6 @@
 import logging
 
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class Event:
     can be made of that information.
     """
 
-    time: int
+    time: float
     type: str
 
     def __repr__(self):
@@ -210,13 +210,13 @@ class Context:
 
         return self._events
 
-    def subcontexts_by_type(self, typename):
+    def subcontexts_by_type(self, typename) -> List["Context"]:
         # no alias checking here, but self.subcontexts is aliased so
         # the appropriate aliasing happens there.
 
         return [c for c in self.subcontexts if c.type == typename]
 
-    def select_subcontexts(self, predicate):
+    def select_subcontexts(self, predicate: Callable) -> "Context":
         if self.aliased is not None:
             return self.aliased.select_subcontexts(predicate)
 

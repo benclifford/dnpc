@@ -7,7 +7,7 @@ import sqlite3
 import matplotlib.pyplot as plt
 
 from parsl.log_utils import set_stream_logger
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 
 from dnpc.structures import Context, Event
@@ -185,6 +185,9 @@ def import_parsl_log(base_context: Context, rundir: str) -> None:
                 graph_id = m.group(3)
                 state = m.group(4)
 
+                # maybe this padding is largely unneeded if its being used as a fraction?
+                # can I just pull out the whole time, including fraction if its there or
+                # not?
                 if fractime is None or len(fractime) == 0:
                     fractime = "000000"  # 0 microseconds
                 elif len(fractime) == 6:
@@ -200,7 +203,9 @@ def import_parsl_log(base_context: Context, rundir: str) -> None:
                 graph_context = graphs_context.get_context(graph_id, "parsl.bps.graph")
 
                 event = Event()
-                event.time = datetime.datetime.strptime(timestamp + "." + fractime, "%Y-%m-%d %H:%M:%S.%f")
+
+                event.time = datetime.datetime.strptime(timestamp + "." + fractime, "%Y-%m-%d %H:%M:%S.%f").timestamp()
+
                 event.type = state
                 graph_context.events.append(event)
                 
@@ -308,7 +313,7 @@ def import_parsl_rundir(base_context: Context, rundir: str) -> None:
     logger.info(f"Finished importing rundir {rundir}")
 
 
-def import_workflow(base_context: Context, db: sqlite3.Connection, run_id: str, rundir_map: (str, str), parsl_tz_shift: float) -> None:
+def import_workflow(base_context: Context, db: sqlite3.Connection, run_id: str, rundir_map: Tuple[str, str], parsl_tz_shift: float) -> None:
     logger.info(f"Importing workflow {run_id}")
 
     context = base_context.get_context(run_id, "parsl.workflow")
@@ -338,6 +343,8 @@ def import_workflow(base_context: Context, db: sqlite3.Connection, run_id: str, 
         # TODO: we'll get the last rundir silently discarding
         # others if there are multiple workflows with the same ID
         # rather than giving an error...
+
+    assert rundir is not None
 
     # rewrite the rundir using the rundir map
     logger.info(f"Remap attempt: rundir={rundir} prefix={rundir_map[0]}")
@@ -398,7 +405,7 @@ def import_workflow(base_context: Context, db: sqlite3.Connection, run_id: str, 
     return context
 
 
-def import_monitoring_db(root_context: Context, dbname: str, rundir_map: (str, str), parsl_tz_shift: float) -> Context:
+def import_monitoring_db(root_context: Context, dbname: str, rundir_map: Tuple[str, str], parsl_tz_shift: float) -> Context:
     """This will import an entire monitoring database as a context.
     A monitoring database root context does not contain any events
     directly; it contains each workflow run as a subcontext.

@@ -32,9 +32,9 @@ from dnpc.plots import \
 logger = logging.getLogger("dnpc.main")
 
 
-def stats_total_in_bps_input_file_path(monitoring_db_context):
+def stats_total_in_bps_input_file_path(monitoring_db_context: Context):
 
-    accum_time = 0  # seconds
+    accum_time = 0.0  # seconds
 
     # TODO: assumes only one workflow
     wf_context = monitoring_db_context.subcontexts_by_type("parsl.workflow")[0]
@@ -47,6 +47,7 @@ def stats_total_in_bps_input_file_path(monitoring_db_context):
         parsl_bps_context.subcontexts_by_type("parsl.bps.graphs")[0]
     graph_context = graphs_context.subcontexts_by_type("parsl.bps.graph")[0]
 
+
     # copy, rather than alias, the events list
     next_events = [e for e in graph_context.events]
 
@@ -58,7 +59,7 @@ def stats_total_in_bps_input_file_path(monitoring_db_context):
             next_event = next_events.pop(0)
             # this will fail if that call never returned,
             #  eg due to forced run end
-            t = (next_event.time - here_event.time).total_seconds()
+            t = next_event.time - here_event.time
             accum_time += t
 
     logger.info(f"Accumulated time in bps get_input_file_paths: {accum_time}s")
