@@ -10,7 +10,7 @@ from parsl.log_utils import set_stream_logger
 from typing import Dict, List, Optional
 
 from dnpc.structures import Context, Event
-from dnpc.plots import (plot_workflows_cumul,
+from dnpc.plots import (plot_parsl_workflows_cumul,
     plot_tasks_summary_cumul,
     plot_tasks_status_cumul,
     plot_tries_cumul,
@@ -474,22 +474,20 @@ def main() -> None:
     # not a prefix of 0123/
     # parsl_rundir_map = ("/global/cscratch1/sd/bxc/run202108/gen3_workflow/runinfo/",
     #                    "/home/benc/tmp/dd/")
+
+    runinfo = "/home/benc/parsl/src/dnpc/sample-data/cori1/"
     parsl_rundir_map = ("/global/cscratch1/sd/bxc/run202108/gen3_workflow/runinfo/",
-                        "/home/benc/parsl/src/dnpc/sample-data/cori1/")
+                        runinfo)
     #parsl_rundir_map = ("/global/cscratch1/sd/jchiang8/desc/gen3_tests/w_2021_34/runinfo/",
     #                   "/home/benc/parsl/src/parsl/bps3-jim/")
 
-    import_monitoring_db(root_context, "./monitoring.db", rundir_map = parsl_rundir_map, parsl_tz_shift= 7.0 * 3600.0)
+    import_monitoring_db(root_context, runinfo + "/monitoring.db", rundir_map = parsl_rundir_map, parsl_tz_shift= 7.0 * 3600.0)
 
     monitoring_db_context = root_context.get_context("monitoring", "parsl.monitoring.db")
 
     logger.info(f"got monitoring db context {monitoring_db_context}")
 
-    # now do some simple plots with this context - at time of writing
-    # all that is available is workflow start/end times but that should
-    # allow plots of number of workflows in each state, which is a
-    # building block to later plots.
-    plot_workflows_cumul(monitoring_db_context)
+    plot_parsl_workflows_cumul(monitoring_db_context)
     plot_tasks_summary_cumul(monitoring_db_context)
     plot_tasks_status_cumul(monitoring_db_context)
     plot_tries_cumul(monitoring_db_context)

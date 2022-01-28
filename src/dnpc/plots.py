@@ -1,3 +1,4 @@
+import datetime
 import logging
 import matplotlib.pyplot as plt
 import random
@@ -1276,29 +1277,19 @@ def plot_wq_parsl_worker_cumul(db_context):
     plt.savefig("dnpc-wq-parsl-worker-cumul.png")
 
 
-def plot_workflows_cumul(db_context):
-    """An example of making a plot. Given a database context,
-    looks at all of the contained contexts (without caring about
-    type, which is probably wrong), and plots the state
-    transitions for all of those immediate child contexts.
-    """
-
-    # pivot from events being grouped by context, to being
-    # grouped by event type
-
+# How does this conversion from spans to graphs match up with feeding in raw gauge data?
+def plot_parsl_workflows_cumul(db_context):
     all_subcontext_events = []
 
     for context in db_context.subcontexts_by_type("parsl.workflow"):
         all_subcontext_events += context.events
-
-    logger.info(f"all subcontext events: {all_subcontext_events}")
 
     event_types = set()
 
     for event in all_subcontext_events:
         event_types.add(event.type)
 
-    logger.info(f"all event types: {event_types}")
+    logger.info(f"This plot contains these event types: {event_types}")
 
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
@@ -1313,17 +1304,17 @@ def plot_workflows_cumul(db_context):
 
         n = 0
         for event in these_events:
-            x.append(event.time)
+            x.append(datetime.datetime.fromtimestamp(event.time)) # what does datetime know about timezones? the docs for fromtimestamp talk about the "local" timezone
             y.append(n)
             n += 1
-            x.append(event.time)
+            x.append(datetime.datetime.fromtimestamp(event.time))
             y.append(n)
 
         logger.info(f"will plot event {event_type} with x={x} and y={y}")
         ax.plot(x, y, label=f"{event_type}")
 
     ax.legend()
-    plt.title("cumulative monitoring.db workflow events by time")
+    plt.title("cumulative monitoring.db workflow events over time")
 
     plt.savefig("dnpc-workflows-cumul.png")
 
