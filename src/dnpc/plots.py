@@ -410,7 +410,7 @@ def plot_tasks_launched_streamgraph_wq_by_type(db_context):
         'beyond_launched': None,
     })
 
-    plot_context_streamgraph(launched_by_appname_contexts, "dnpc-appname-launched-on-wq.png", state_config=colour_states)
+    plot_context_streamgraph(launched_by_appname_contexts, "appname-launched-on-wq", state_config=colour_states)
 
 
 
@@ -527,7 +527,7 @@ def plot_tasks_running_streamgraph_wq_by_type(db_context):
         'beyond_running': None,
     })
 
-    plot_context_streamgraph(running_by_appname_contexts, "dnpc-appname-running-on-wq.png", state_config=colour_states)
+    plot_context_streamgraph(running_by_appname_contexts, "appname-running-on-wq", state_config=colour_states)
 
 
 def plot_tasks_running_streamgraph_wq_by_type_mem_weighted(db_context):
@@ -646,7 +646,7 @@ def plot_tasks_running_streamgraph_wq_by_type_mem_weighted(db_context):
         'beyond_running': None,
     })
 
-    plot_context_streamgraph(running_by_appname_contexts, "dnpc-appname-running-on-wq-mem-weighted.png", state_config=colour_states)
+    plot_context_streamgraph(running_by_appname_contexts, "appname-running-on-wq-mem-weighted", state_config=colour_states)
 
 
 def plot_tries_cumul(db_context):
@@ -830,7 +830,7 @@ def plot_tasks_status_streamgraph_wq(db_context):
 
     }
 
-    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-status-wq.png", state_config=colour_states)
+    plot_context_streamgraph(all_state_subcontexts, "tasks-status-wq", state_config=colour_states)
 
 
 def plot_tasks_status_streamgraph_submit(db_context):
@@ -864,7 +864,7 @@ def plot_tasks_status_streamgraph_submit(db_context):
 
     }
 
-    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-status-submit.png", state_config=colour_states)
+    plot_context_streamgraph(all_state_subcontexts, "tasks-status-submit", state_config=colour_states)
 
 
 def plot_tasks_status_streamgraph(db_context):
@@ -885,7 +885,7 @@ def plot_tasks_status_streamgraph(db_context):
 
     }
 
-    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-status.png", state_config=colour_states)
+    plot_context_streamgraph(all_state_subcontexts, "tasks-status", state_config=colour_states)
 
 
 def plot_task_running_event_stacked_and_streamgraph_wq(db_context):
@@ -992,11 +992,11 @@ def plot_task_running_event_stacked_and_streamgraph_wq(db_context):
             # logger.info(f"BENC context events: {collapsed_context.events}")
 
     logger.info("post-shared-processing - starting plot")
-    plot_context_streamgraph(all_state_subcontexts, "dnpc-tasks-running-event-wq.png", state_config=config_states)
+    plot_context_streamgraph(all_state_subcontexts, "tasks-running-event-wq", state_config=config_states)
     logger.info("starting stacked_and_streamgraph unified plot code")
 
 
-def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
+def plot_context_streamgraph(all_state_subcontexts, filebase, state_config={}):
 
 
     logger.info("plot_context_streamgraph: starting")
@@ -1166,7 +1166,7 @@ def plot_context_streamgraph(all_state_subcontexts, filename, state_config={}):
         ax.legend(loc='upper left')
         plt.title(f"Contexts in each state by time ({baseline} baseline)")
 
-        plt.savefig(baseline+"-"+filename)
+        plt.savefig(filebase+"-"+baseline+".png")
     logger.info("plot_context_streamgraph: done")
 
 
