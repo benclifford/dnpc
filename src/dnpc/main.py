@@ -68,6 +68,10 @@ def main() -> None:
     set_stream_logger(name="dnpc", level = logging.INFO)
     logger.info("dnpc start")
 
+    # is a root context really a "root"? I can, I think, later on, embed it inside
+    # another context - so this is more like an empty context constructor?
+    # in which case, why not Context() without a helper? I think I was assuming I
+    # could declare "roots" but thats not how things have evolved?
     root_context = Context.new_root_context()
 
     # This is to deal with log files being moved around to different paths,
@@ -92,6 +96,16 @@ def main() -> None:
     monitoring_db_context = root_context.get_context("monitoring", "parsl.monitoring.db")
 
     logger.info(f"got monitoring db context {monitoring_db_context}")
+
+    # Now make a subset context -- that is, a monitoring db context that contains only some selected subspans.
+    # Most immediately, because I only want to plot one workflow, but more generally I could select a subset
+    # of workflows and so doing subsets this way rather than picking out an individual workflow is maybe more
+    # general.
+
+    logger.info("Replacing monitoring db context with a setset of it")
+
+    # what might a helper method look like? select-by with a lambda?
+    
 
     plot_parsl_workflows_cumul(monitoring_db_context)
     plot_tasks_summary_cumul(monitoring_db_context)
