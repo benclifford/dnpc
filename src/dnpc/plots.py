@@ -5,6 +5,8 @@ import random
 
 from dnpc.structures import Context, Event
 
+from typing import Dict, List, Optional, Set, Tuple
+
 logger = logging.getLogger(__name__)
 
 def plot_wq_running_to_parsl_running_histo(db_context):
@@ -389,6 +391,7 @@ def plot_tasks_launched_streamgraph_wq_by_type(db_context):
             launched_by_appname_contexts.append(context)
             
     # parsl task-level states
+    colour_states : Dict[str, Optional[str]]
     colour_states = {}
 
     # better hope there's enough for the number of apps
@@ -503,6 +506,7 @@ def plot_tasks_running_streamgraph_wq_by_type(db_context):
             running_by_appname_contexts.append(context)
             
     # parsl task-level states
+    colour_states: Dict[str, Optional[str]]
     colour_states = {
         'Worker prep': '#777777'
     }
@@ -622,6 +626,7 @@ def plot_tasks_running_streamgraph_wq_by_type_mem_weighted(db_context):
             running_by_appname_contexts.append(context)
             
     # parsl task-level states
+    colour_states: Dict[str, Optional[str]]
     colour_states = {
         'Worker prep': '#777777'
     }
@@ -1000,7 +1005,14 @@ def plot_context_streamgraph(all_state_subcontexts, filebase, state_config={}):
 
 
     logger.info("plot_context_streamgraph: starting")
-    implicit_state_sequence = ["running_ended", "exec_done"] + ["parsl.wq.exec_parsl_function.EXECUTEFUNCTION", "parsl.task.states.running", "parsl.task.states.running_ended", "parsl.task.states.exec_done"]
+
+    # TODO: factor this out... it's specific to the particular components being monitored.
+    # The state sequence is not automatable so much:
+    # for a particular source its specific to that source, and in the case of an
+    # integration of sources, that's more complicated - the "integrator" should
+    # specify some model, perhaps?
+    # as part of the state_config parameter
+    implicit_state_sequence = ["running", "exec_done"] + ["parsl.wq.exec_parsl_function.EXECUTEFUNCTION", "parsl.task.states.running", "parsl.task.states.running_ended", "parsl.task.states.exec_done"]
     # given an event, disambiguate its event ordering wrt other events
     # which might happen in the same instant, by applying domain specific
     # knowledge about sort orders.
@@ -1033,6 +1045,7 @@ def plot_context_streamgraph(all_state_subcontexts, filebase, state_config={}):
     # subsequent events increase the event type and decrease the former
     # event type
 
+    plot_events: Dict[str, List[Tuple[float, int]]]
     plot_events = {}
     for t in event_types:
         plot_events[t] = []
@@ -1074,6 +1087,7 @@ def plot_context_streamgraph(all_state_subcontexts, filebase, state_config={}):
     # to ensure the x axis is fully populated
 
     logger.info("plot_context_streamgraph: collecting x axis values")
+    canonical_x_axis_set: Set[float]
     canonical_x_axis_set = set()
     for t in event_types:
         these_x = [e[0] for e in plot_events[t]]
@@ -1095,14 +1109,12 @@ def plot_context_streamgraph(all_state_subcontexts, filebase, state_config={}):
     remaining = list(event_types.difference(new_event_types))
     remaining.sort()
     new_event_types += remaining
-    
-    event_types = new_event_types
-
+  
     # matplotlib color cycle number
     c_n = 0
 
     logger.info("plot_context_streamgraph: iterating over event types")
-    for event_type in event_types:
+    for event_type in new_event_types:
         logger.info(f"plot_context_streamgraph: {event_type}: start")
         config = state_config.get(event_type, -1)
         if config is None:
