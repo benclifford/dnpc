@@ -47,7 +47,6 @@ def stats_total_in_bps_input_file_path(monitoring_db_context: Context):
         parsl_bps_context.subcontexts_by_type("parsl.bps.graphs")[0]
     graph_context = graphs_context.subcontexts_by_type("parsl.bps.graph")[0]
 
-
     # copy, rather than alias, the events list
     next_events = [e for e in graph_context.events]
 
