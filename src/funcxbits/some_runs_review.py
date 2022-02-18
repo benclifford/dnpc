@@ -56,8 +56,6 @@ cloudwatch_ctx = import_cloudwatch(known_task_uuids)
 
 print(root_context)
 
-# can re-use a streamgraph plot from the LSST work to show the states of
-# each task at each time?
 
 ctxs = root_context.subcontexts_by_type("demo.apptask")
 
@@ -128,5 +126,43 @@ plt.xscale('log')
 plt.savefig("funcx-poll-duration-histo.png")
 
 # TODO: histogram submission time (500)
+
+
+# Histograms of completion time differences
+# there are various pairings available here.
+# Without any log integration, only pair is
+# between web service user fetched, and
+# forwarder result received
+
+def scan_context_for_result_to_fetch_duration(ctx):
+  events = ctx.events
+  enqueued = [e for e in events if e.type == "funcx_forwarder.forwarder-result_enqueued"]
+  fetched = [e for e in events if e.type == "funcx_web_service-user_fetched"]
+  if len(enqueued) != 1 or len(fetched) != 1:
+    raise ValueError("Task does not have correct states for this plot")
+    return []
+  return [ fetched[0].time - enqueued[0].time ]
+
+ctxs = cloudwatch_ctx.subcontexts_by_type("funcx.cloudwatch.task")
+assert len(ctxs) == 500
+ctx_durations = [scan_context_for_result_to_fetch_duration(c) for c in ctxs ]
+
+durations= []
+for d in ctx_durations:
+  durations.extend(d)
+
+xs = durations
+print(xs)
+assert len(xs) == 500
+
+
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+plt.title("Result enqueued to user fetched duration")
+hist, bins, _ = ax.hist(xs, bins=100)
+
+plt.savefig("funcx-cloudwatch-enqueued-to-fetched-histo.png")
+
+
 
 print("end import")
