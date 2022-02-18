@@ -4,21 +4,28 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
+from uuid import UUID
+
 from dnpc.structures import Context, Event
 from dnpc.plots import plot_context_streamgraph
 
+from funcxbits.cloudwatch_csv import import_cloudwatch
 
-# this is specifically aimed at importing the log generated
+# this is specifically aimed at importing the logs generated
 # by funcxbits.do_some_runs
 
 # import 'do_some_runs.log'
 
 root_context = Context.new_root_context()
 
+# this will be used to filter the cloudwatch logs to just the
+# tasks imported by the first round of imports
+known_task_uuids = set()
+
 print("start import")
 with open("do_some_runs.log", "r") as logfile:
     # 1645194062.952741 2022-02-18 14:21:02,952 dnpc.funcx.demoapp:27 MainProcess(157) MainThread [INFO]  TASK 0 RUN
-    re_task = re.compile('([0-9.]*) .*  TASK ([^ ]*) ([^ \n]*).*$')
+    re_task = re.compile('([0-9.]*) .*  TASK ([^ ]*) ([^ \n]*)(.*)$')
 
     for line in logfile:
         m = re_task.match(line)
@@ -36,6 +43,16 @@ with open("do_some_runs.log", "r") as logfile:
             event.type = status 
             event.time = float(time)
             ctx.events.append(event)
+
+            # TASK 0 RUN_POST 8e7bfed8-56fa-450b-bdf3-93921820c8fb
+            if status == "RUN_POST":  # extract the UUID to bind to funcx's task identity model
+                try:
+                  known_task_uuids.add(UUID(m.group(4).strip())) 
+                except:
+                  print(f"handling exception for uuid string >{m.group(4)}<")
+                  raise
+
+cloudwatch_ctx = import_cloudwatch(known_task_uuids)
 
 print(root_context)
 
@@ -63,7 +80,13 @@ colour_states={"RUN": "#FF0000",
                }
 plot_context_streamgraph(ctxs, "funcx-client-view.png", colour_states)
 
+cloudwatch_colour_states = {"funcx_web_service-user_fetched": "#77FF22",
+                            "funcx_forwarder.forwarder-result_enqueued": "#00EE00",
+                            "funcx_web_service-received": "#FF7777",
+                            "funcx_forwarder.forwarder-dispatched_to_endpoint": "#00FFFF"
+                           }
 
+plot_context_streamgraph(cloudwatch_ctx.subcontexts_by_type("funcx.cloudwatch.task"), "funcx-cloudwatch-view.png", cloudwatch_colour_states)
 
 # TODO: histogram poll time (500 x many)
 
