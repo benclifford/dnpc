@@ -1,7 +1,12 @@
 import re
 
+import matplotlib.pyplot as plt
+
+import numpy as np
+
 from dnpc.structures import Context, Event
 from dnpc.plots import plot_context_streamgraph
+
 
 # this is specifically aimed at importing the log generated
 # by funcxbits.do_some_runs
@@ -32,6 +37,8 @@ with open("do_some_runs.log", "r") as logfile:
             event.time = float(time)
             ctx.events.append(event)
 
+print(root_context)
+
 # can re-use a streamgraph plot from the LSST work to show the states of
 # each task at each time?
 
@@ -54,10 +61,49 @@ colour_states={"RUN": "#FF0000",
                "POLL_END_PENDING_waiting-for-launch": "#0000FF",
                "POLL_END_PENDING_waiting-for-nodes": "#00FFFF"
                }
-plot_context_streamgraph(ctxs, "funcx1", colour_states)
+plot_context_streamgraph(ctxs, "funcx-client-view.png", colour_states)
 
-# TODO: histogram submission time (500)
+
+
 # TODO: histogram poll time (500 x many)
 
-print(root_context)
+# need to go through each context in turn, scan its events and turn each POLL_START -> POLL_END_* status into a single value
+
+def scan_context_for_poll_durations(ctx):
+  events = ctx.events
+  durations = []
+  while events != []:
+    e = events[0]
+    events = events[1:] # remove paid of events
+    if e.type == "POLL_START":
+      e2 = events[0]
+      events = events[1:] # remove paid of events
+      if e2.type.startswith("POLL_END"):
+        duration = e2.time - e.time
+        durations.append(duration)
+  return durations
+
+ctxs = root_context.subcontexts_by_type("demo.apptask")
+ctx_durations = [scan_context_for_poll_durations(c) for c in ctxs ]
+
+durations= []
+for d in ctx_durations:
+  durations.extend(d)
+
+xs = durations
+
+fig = plt.figure()
+ax = fig.add_subplot(2, 1, 1)
+plt.title("Result poll duration")
+hist, bins, _ = ax.hist(xs, bins=100)
+
+ax = fig.add_subplot(2, 1, 2)
+logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
+hist, bins, _ = ax.hist(xs, bins=logbins)
+plt.xscale('log')
+
+plt.savefig("funcx-poll-duration-histo.png")
+
+# TODO: histogram submission time (500)
+
 print("end import")
