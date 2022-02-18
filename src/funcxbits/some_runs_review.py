@@ -47,12 +47,15 @@ with open("do_some_runs.log", "r") as logfile:
             # TASK 0 RUN_POST 8e7bfed8-56fa-450b-bdf3-93921820c8fb
             if status == "RUN_POST":  # extract the UUID to bind to funcx's task identity model
                 try:
-                  known_task_uuids.add(UUID(m.group(4).strip())) 
+                  u = UUID(m.group(4).strip())
                 except:
                   print(f"handling exception for uuid string >{m.group(4)}<")
                   raise
+                known_task_uuids.add(u)
+                uuidctx = root_context.get_context(u, "funcx.cloudwatch.task")
+                ctx.alias_context("cloudwatch", uuidctx)
 
-cloudwatch_ctx = import_cloudwatch(known_task_uuids)
+cloudwatch_ctx = import_cloudwatch(known_task_uuids, root_context)
 
 print(root_context)
 
@@ -162,6 +165,79 @@ plt.title("Result enqueued to user fetched duration")
 hist, bins, _ = ax.hist(xs, bins=100)
 
 plt.savefig("funcx-cloudwatch-enqueued-to-fetched-histo.png")
+
+
+# histogram of user side task completion, and forward side result_enqueued
+def scan_context_for_enqueued_to_client_completed_duration(ctx):
+  subctx = ctx.subcontexts_by_type("funcx.cloudwatch.task")
+  assert len(subctx) == 1
+  events = subctx[0].events
+  enqueued = [e for e in events if e.type == "funcx_forwarder.forwarder-result_enqueued"]
+
+  events = ctx.events
+  completed = [e for e in events if e.type == "POLL_END_COMPLETE"]
+
+  if len(enqueued) != 1 or len(completed) != 1:
+    raise ValueError("Task does not have correct states for this plot")
+    return []
+  return [ completed[0].time - enqueued[0].time ]
+
+ctxs = root_context.subcontexts_by_type("demo.apptask")
+assert len(ctxs) == 500
+ctx_durations = [scan_context_for_enqueued_to_client_completed_duration(c) for c in ctxs ]
+
+durations= []
+for d in ctx_durations:
+  durations.extend(d)
+
+xs = durations
+print(xs)
+assert len(xs) == 500
+
+
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+plt.title("Result enqueued to user fetched duration")
+hist, bins, _ = ax.hist(xs, bins=100)
+
+plt.savefig("funcx-cloudwatch-enqueued-to-client-completed-histo.png")
+
+
+# histogram of user side task completion, and web service funcx_web_service-user_fetched"
+def scan_context_for_user_fetched_to_client_completed_duration(ctx):
+  subctx = ctx.subcontexts_by_type("funcx.cloudwatch.task")
+  assert len(subctx) == 1
+  events = subctx[0].events
+  fetched = [e for e in events if e.type == "funcx_web_service-user_fetched"]
+
+  events = ctx.events
+  completed = [e for e in events if e.type == "POLL_END_COMPLETE"]
+
+  if len(fetched) != 1 or len(completed) != 1:
+    raise ValueError("Task does not have correct states for this plot")
+    return []
+  return [ completed[0].time - fetched[0].time ]
+
+ctxs = root_context.subcontexts_by_type("demo.apptask")
+assert len(ctxs) == 500
+ctx_durations = [scan_context_for_user_fetched_to_client_completed_duration(c) for c in ctxs ]
+
+durations= []
+for d in ctx_durations:
+  durations.extend(d)
+
+xs = durations
+print(xs)
+assert len(xs) == 500
+
+
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+plt.title("Web service user fetched to client side completed, duration")
+hist, bins, _ = ax.hist(xs, bins=100)
+
+plt.savefig("funcx-cloudwatch-user-fetched-to-client-completed-histo.png")
+
 
 
 
