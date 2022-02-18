@@ -10,6 +10,12 @@ Target applications:
 
 1. lsst desc bps + parsl + Work Queue
 
+To run the DESC specific processing code:
+
+```
+$ python -m dnpc.main
+```
+
 
 2. funcX: submit side + funcX hosted logs + endpoint logs
 
