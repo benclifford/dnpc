@@ -29,3 +29,16 @@ endpoint logs - with no visibility inside the hosted services.
 So the same runs can be presented as different views based on data access,
 and understanding how that changes understanding is something interesting,
 I think.
+
+CSV import from cloudwatch: I matched these logs in cloudwatch and
+downloaded a CSV, for a time period covering the time I ran my test
+application.
+
+```
+fields @timestamp, @message
+| sort @timestamp desc
+| filter log_processed.log_type = "task_transition"
+| limit 10000
+```
+
+so there will be lots of tasks in there, a subset of which are mine.
