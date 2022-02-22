@@ -147,7 +147,6 @@ def scan_context_for_result_to_fetch_duration(ctx):
   return [ fetched[0].time - enqueued[0].time ]
 
 ctxs = cloudwatch_ctx.subcontexts_by_type("funcx.cloudwatch.task")
-assert len(ctxs) == 500
 ctx_durations = [scan_context_for_result_to_fetch_duration(c) for c in ctxs ]
 
 durations= []
@@ -156,7 +155,6 @@ for d in ctx_durations:
 
 xs = durations
 print(xs)
-assert len(xs) == 500
 
 
 fig = plt.figure()
@@ -183,7 +181,6 @@ def scan_context_for_enqueued_to_client_completed_duration(ctx):
   return [ completed[0].time - enqueued[0].time ]
 
 ctxs = root_context.subcontexts_by_type("demo.apptask")
-assert len(ctxs) == 500
 ctx_durations = [scan_context_for_enqueued_to_client_completed_duration(c) for c in ctxs ]
 
 durations= []
@@ -192,7 +189,6 @@ for d in ctx_durations:
 
 xs = durations
 print(xs)
-assert len(xs) == 500
 
 
 fig = plt.figure()
@@ -219,7 +215,6 @@ def scan_context_for_user_fetched_to_client_completed_duration(ctx):
   return [ completed[0].time - fetched[0].time ]
 
 ctxs = root_context.subcontexts_by_type("demo.apptask")
-assert len(ctxs) == 500
 ctx_durations = [scan_context_for_user_fetched_to_client_completed_duration(c) for c in ctxs ]
 
 durations= []
@@ -228,7 +223,6 @@ for d in ctx_durations:
 
 xs = durations
 print(xs)
-assert len(xs) == 500
 
 
 fig = plt.figure()
