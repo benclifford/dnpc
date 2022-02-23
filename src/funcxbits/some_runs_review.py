@@ -27,6 +27,11 @@ with open("do_some_runs.log", "r") as logfile:
     # 1645194062.952741 2022-02-18 14:21:02,952 dnpc.funcx.demoapp:27 MainProcess(157) MainThread [INFO]  TASK 0 RUN
     re_task = re.compile('([0-9.]*) .*  TASK ([^ ]*) ([^ \n]*)(.*)$')
 
+    # 1645568761.984889 2022-02-22 22:26:01,984 dnpc.funcx.demoapp:60 MainProcess(1082) MainThread [INFO]  TASK_INNER_TIME 497 1645568751.3486533 1645568761.355121
+
+    re_result = re.compile('[0-9.]* .*  TASK_INNER_TIME ([0-9]+) ([0-9.]+) ([0-9.]+).*$')
+
+
     for line in logfile:
         m = re_task.match(line)
         if m:
@@ -54,6 +59,27 @@ with open("do_some_runs.log", "r") as logfile:
                 known_task_uuids.add(u)
                 uuidctx = root_context.get_context(u, "funcx.cloudwatch.task")
                 ctx.alias_context("cloudwatch", uuidctx)
+
+        m = re_result.match(line)
+        if m:
+            task = m.group(1)
+            end_time = m.group(3)
+
+            task_ctx = root_context.get_context(task_id, "demo.apptask")
+            appfn_ctx = task_ctx.get_context("appfn", "demo.apptask.worker")
+
+            event = Event()
+            event.type = "app_in_worker_start"
+            event.time = float(m.group(2))
+            appfn_ctx.events.append(event)
+
+            event = Event()
+            event.type = "app_in_worker_end"
+            event.time = float(m.group(3))
+            appfn_ctx.events.append(event)
+
+
+
 
 cloudwatch_ctx = import_cloudwatch(known_task_uuids, root_context)
 
