@@ -282,6 +282,56 @@ hist, bins, _ = ax.hist(xs, bins=100)
 
 plt.savefig("funcx-cloudwatch-user-fetched-to-client-completed-histo.png")
 
+# histogram of task durations according to app level stuff
+
+def context_to_app_reported_duration(ctx):
+  subctxs = ctx.subcontexts_by_type("demo.apptask.worker")
+  assert len(subctxs) == 1
+  subctx = subctxs[0]
+
+  assert len(subctx.events) == 2
+
+  start = [e.time for e in subctx.events if e.type == "app_in_worker_start"][0]
+  end = [e.time for e in subctx.events if e.type == "app_in_worker_end"][0]
+
+  return (end - start)
+
+durations = [context_to_app_reported_duration(ctx) for ctx in root_context.subcontexts_by_type("demo.apptask")]
+
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+plt.title("Task duration according to app's own worker side logging / seconds")
+hist, bins, _ = ax.hist(durations, bins=100)
+
+plt.savefig("funcx-duration-app-worker-side.png")
+
+# histogram of task durations according to funcx worker-side
+
+def context_to_app_reported_duration(ctx):
+  subctxs = ctx.subcontexts_by_type("funcx.cloudwatch.task")
+  assert len(subctxs) == 1
+  subctx = subctxs[0]
+  subsubctxs = subctx.subcontexts_by_type("funcx.cloudwatch.task.times")
+  assert len(subsubctxs) == 1
+  subsubctx = subsubctxs[0]
+  assert subsubctx is not None
+
+  assert len(subsubctx.events) == 2
+
+  start = [e.time for e in subsubctx.events if e.type == "execution_start"][0]
+  end = [e.time for e in subsubctx.events if e.type == "execution_end"][0]
+
+  return (end - start)
+
+durations = [context_to_app_reported_duration(ctx) for ctx in root_context.subcontexts_by_type("demo.apptask")]
+
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+plt.title("Task duration according to funcx' worker side logging / seconds")
+hist, bins, _ = ax.hist(durations, bins=100)
+
+plt.savefig("funcx-duration-funcx-worker-side.png")
+
 
 
 
