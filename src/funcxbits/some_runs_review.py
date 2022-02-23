@@ -352,22 +352,59 @@ contexts = root_context.subcontexts_by_type("demo.apptask")
 def context_app_worker_end_time(ctx):
     """Given a demo.apptask context, returnthe app reported worker end time.
     """
-    return 7
+    subctxs = ctx.subcontexts_by_type("demo.apptask.worker")
+    assert len(subctxs) == 1
+    subctx = subctxs[0]
+
+    assert len(subctx.events) == 2
+
+    end = [e.time for e in subctx.events if e.type == "app_in_worker_end"][0]
+    # TODO: assert length of this ^ list as 1
+
+    return end
 
 def context_funcx_worker_end_time(ctx):
     """Given a demo.apptask context, returnthe funcx reported worker end time.
     """
-    return 7.1
+
+    subctxs = ctx.subcontexts_by_type("funcx.cloudwatch.task")
+    assert len(subctxs) == 1
+    subctx = subctxs[0]
+    subsubctxs = subctx.subcontexts_by_type("funcx.cloudwatch.task.times")
+    assert len(subsubctxs) == 1
+    subsubctx = subsubctxs[0]
+    assert subsubctx is not None
+
+    assert len(subsubctx.events) == 2
+
+    end = [e.time for e in subsubctx.events if e.type == "execution_end"][0]
+
+    return end
+
 
 def context_client_poll_end_time(ctx):
     """Given a demo.apptask context, returnthe funcx reported worker end time.
     """
-    return 7.11 + random.random()/3.0
 
+    events = ctx.events
+    completed = [e for e in events if e.type == "POLL_END_COMPLETE"]
+    assert len(completed) == 1
+    return completed[0].time
+
+def context_result_enqueued_time(ctx):
+  subctx = ctx.subcontexts_by_type("funcx.cloudwatch.task")
+  assert len(subctx) == 1
+  events = subctx[0].events
+  enqueued = [e for e in events if e.type == "funcx_forwarder.forwarder-result_enqueued"]
+
+  if len(enqueued) != 1:
+    raise ValueError("Task does not have correct states for this plot")
+  return enqueued[0].time
 
 
 accessors = [("app_worker_end", context_app_worker_end_time),
              ("funcx_worker_end", context_funcx_worker_end_time),
+             ("result_enqueued", context_result_enqueued_time)]
              ("client_poll_complete", context_client_poll_end_time)]
 
 vs = []
