@@ -14,7 +14,7 @@ target_endpoint="2238617a-8756-4030-a8ab-44ffb1446092"
 #            "results_ws_uri": "wss://api.dev.funcx.org/ws/v2/",
 
 
-def sleep(duration=30):
+def sleep(duration=10):
     import time
     start=time.time()
     time.sleep(duration)
@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
     result_refs = []
     logger.info("APP LAUNCH_STAGE")
-    for n in range(0,20):
+    for n in range(0,500):
       logger.info(f"TASK {n} RUN")
       result_uuid = c.run(endpoint_id = target_endpoint, function_id=sleep_uuid)
       logger.info(f"TASK {n} RUN_POST {result_uuid}")
