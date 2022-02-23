@@ -201,6 +201,15 @@ class Context:
         return [self._subcontexts[k] for k in self._subcontexts]
 
     @property
+    def subcontexts_dict(self) -> List["Context"]:
+        """The subcontexts property is read-only. It should be maintained by
+        Context helper methods."""
+        if self.aliased is not None:
+            return self.aliased.subcontexts
+        return self._subcontexts
+
+
+    @property
     def events(self) -> List[Event]:
         """The reference to a list is immutable - the list cannot be replaced
         by a new list. But the list itself is mutable and new events can be

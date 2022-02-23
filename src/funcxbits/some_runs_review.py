@@ -131,8 +131,8 @@ def absorb_ctx_events(new_ctx, initial_ctx, prefix=""):
         new_e.type = prefix + e.type
         new_e.time = e.time
         new_ctx.events.append(new_e)
-    for sub_ctx in initial_ctx.subcontexts:
-        absorb_ctx_events(new_ctx, sub_ctx, prefix=prefix+"x.")
+    for (name, sub_ctx) in initial_ctx.subcontexts_dict.items():
+        absorb_ctx_events(new_ctx, sub_ctx, prefix=prefix+name+".")
 
 # replace each context with a recursively flattened set of events
 collapsed_ctxs = [collapse_ctx(ctx) for ctx in ctxs]

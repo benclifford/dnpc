@@ -55,15 +55,15 @@ def import_cloudwatch(known_task_uuids, outer_context):
                     execution_start = float(times['execution_start'])
                     execution_end = float(times['execution_end'])
 
-                    times_ctx = ctx.get_context("times_block", "funcx.cloudwatch.task.times")
+                    times_ctx = ctx.get_context("times", "funcx.cloudwatch.task.times")
 
                     e = Event()
-                    e.type = "start"
+                    e.type = "execution_start"
                     e.time = execution_start
                     times_ctx.events.append(e)
 
                     e = Event()
-                    e.type = "end"
+                    e.type = "execution_end"
                     e.time = execution_end
                     times_ctx.events.append(e)
 
