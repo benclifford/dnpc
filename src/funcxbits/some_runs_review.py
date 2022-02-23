@@ -1,8 +1,12 @@
 import re
 
+import pandas 
+
 import matplotlib.pyplot as plt
 
 import numpy as np
+
+import random
 
 from uuid import UUID
 
@@ -333,6 +337,81 @@ hist, bins, _ = ax.hist(durations, bins=100)
 plt.savefig("funcx-duration-funcx-worker-side.png")
 
 
+# box-and-whisker plot of task end states, normalised against in-app recorded completion time
+# It might be interesting to see if I can do data-frame based stuff here
+#  - eg make a dataframe of the relevant times,
+#       then use dataframe operations to do the normalisation
+#       rather than implementing it all in loops and more explicit rearrangements?
+# its a good form for box and whisker plot?
 
+# for each context, given "accessors" for each time stamp (that is, a function which given a context returns the appropriate event)
+# make a dataframe of each context is a row, each column is the time stamp pointed to by an accessor.
+
+contexts = root_context.subcontexts_by_type("demo.apptask")
+
+def context_app_worker_end_time(ctx):
+    """Given a demo.apptask context, returnthe app reported worker end time.
+    """
+    return 7
+
+def context_funcx_worker_end_time(ctx):
+    """Given a demo.apptask context, returnthe funcx reported worker end time.
+    """
+    return 7.1
+
+def context_client_poll_end_time(ctx):
+    """Given a demo.apptask context, returnthe funcx reported worker end time.
+    """
+    return 7.11 + random.random()/3.0
+
+
+
+accessors = [("app_worker_end", context_app_worker_end_time),
+             ("funcx_worker_end", context_funcx_worker_end_time),
+             ("client_poll_complete", context_client_poll_end_time)]
+
+# cols = [ [], [] ]  # one for each accessor
+vs = []
+
+for ctx in contexts:
+  v = []
+  for n in range(0, len(accessors)):
+    accessor = accessors[n][1]
+    new_val = accessor(ctx)
+    # cols[n].append(new_val)
+    v.append(new_val)
+  vs.append(v)
+
+cols = [a[0] for a in accessors]
+
+# print(cols)
+
+df = pandas.DataFrame(data=vs, columns=cols)
+
+print(df)
+
+base = df['app_worker_end']
+
+for c in df.columns:
+  df[c] = df[c] - base
+
+# df[1] = df[1] - df[0]
+# df[2] = df[2] - df[0]
+# and finally for completeness
+# do this last. it's a bit silly
+# perhaps should just delete this column?
+# df[0] = df[0] - df[0]
+
+print(df)
+
+formatted_labels = [c.replace("_","\n").replace(".","\n") for c in df.columns]
+
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+plt.title("Ending events, normalised against app worker end / seconds")
+# hist, bins, _ = ax.hist(durations, bins=100)
+ax.boxplot(df, vert=False, labels=formatted_labels)
+
+plt.savefig("funcx-ending-whisker.png")
 
 print("end import")
