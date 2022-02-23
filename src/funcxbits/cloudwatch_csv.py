@@ -49,6 +49,25 @@ def import_cloudwatch(known_task_uuids, outer_context):
 
             luuids.add(task_uuid)
 
-  return outer_context         
+            if "times" in json_inner:
+                times = json_inner['times']
+                if times is not None:
+                    execution_start = float(times['execution_start'])
+                    execution_end = float(times['execution_end'])
+
+                    times_ctx = ctx.get_context("times_block", "funcx.cloudwatch.task.times")
+
+                    e = Event()
+                    e.type = "start"
+                    e.time = execution_start
+                    times_ctx.events.append(e)
+
+                    e = Event()
+                    e.type = "end"
+                    e.time = execution_end
+                    times_ctx.events.append(e)
+
+
+  return outer_context
 
   print(f"Found {len(luuids)} uuids matching")
