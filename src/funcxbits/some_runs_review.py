@@ -115,6 +115,27 @@ cloudwatch_colour_states = {"funcx_web_service-user_fetched": "#77FF22",
 
 plot_context_streamgraph(cloudwatch_ctx.subcontexts_by_type("funcx.cloudwatch.task"), "funcx-cloudwatch-view.png", cloudwatch_colour_states)
 
+
+# plot a streamgraph of all known state transitions, collapsed from all subcontexts
+
+ctxs = root_context.subcontexts_by_type("demo.apptask")
+
+def collapse_ctx(initial_ctx):
+    new_ctx = Context()
+    absorb_ctx_events(new_ctx, initial_ctx)
+    return new_ctx
+
+def absorb_ctx_events(new_ctx, initial_ctx):
+    for e in initial_ctx.events:
+        new_ctx.events.append(e)
+    for sub_ctx in initial_ctx.subcontexts:
+        absorb_ctx_events(new_ctx, sub_ctx)
+
+# replace each context with a recursively flattened set of events
+collapsed_ctxs = [collapse_ctx(ctx) for ctx in ctxs]
+
+plot_context_streamgraph(collapsed_ctxs, "funcx-collapsed-contexts.png", colour_states)
+
 # TODO: histogram poll time (500 x many)
 
 # need to go through each context in turn, scan its events and turn each POLL_START -> POLL_END_* status into a single value
