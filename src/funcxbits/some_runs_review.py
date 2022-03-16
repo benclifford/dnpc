@@ -191,6 +191,7 @@ plt.savefig("funcx-poll-duration-histo.png")
 # between web service user fetched, and
 # forwarder result received
 
+"""
 def scan_context_for_result_to_fetch_duration(ctx):
   events = ctx.events
   enqueued = [e for e in events if e.type == "funcx_forwarder.forwarder-result_enqueued"]
@@ -217,7 +218,7 @@ plt.title("Result enqueued to user fetched duration")
 hist, bins, _ = ax.hist(xs, bins=100)
 
 plt.savefig("funcx-cloudwatch-enqueued-to-fetched-histo.png")
-
+"""
 
 # histogram of user side task completion, and forward side result_enqueued
 def scan_context_for_enqueued_to_client_completed_duration(ctx):
@@ -254,6 +255,8 @@ plt.savefig("funcx-cloudwatch-enqueued-to-client-completed-histo.png")
 
 
 # histogram of user side task completion, and web service funcx_web_service-user_fetched"
+
+"""
 def scan_context_for_user_fetched_to_client_completed_duration(ctx):
   subctx = ctx.subcontexts_by_type("funcx.cloudwatch.task")
   assert len(subctx) == 1
@@ -285,12 +288,13 @@ plt.title("Web service user fetched to client side completed, duration")
 hist, bins, _ = ax.hist(xs, bins=100)
 
 plt.savefig("funcx-cloudwatch-user-fetched-to-client-completed-histo.png")
+"""
 
 # histogram of task durations according to app level stuff
 
 def context_to_app_reported_duration(ctx):
   subctxs = ctx.subcontexts_by_type("demo.apptask.worker")
-  assert len(subctxs) == 1
+  assert len(subctxs) == 1, f"Length of worker contexts list: {len(subctxs)}, list is {subctxs}"
   subctx = subctxs[0]
 
   assert len(subctx.events) == 2
@@ -404,7 +408,7 @@ def context_result_enqueued_time(ctx):
 
 accessors = [("app_worker_end", context_app_worker_end_time),
              ("funcx_worker_end", context_funcx_worker_end_time),
-             ("result_enqueued", context_result_enqueued_time)]
+             ("result_enqueued", context_result_enqueued_time),
              ("client_poll_complete", context_client_poll_end_time)]
 
 vs = []
@@ -438,5 +442,13 @@ plt.title("Ending events, normalised against app worker end / seconds")
 ax.boxplot(df, vert=False, labels=formatted_labels)
 
 plt.savefig("funcx-ending-whisker.png")
+
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1)
+plt.title("Ending events, normalised against app worker end / seconds")
+ax.boxplot(df, vert=False, labels=formatted_labels, showfliers=False)
+
+plt.savefig("funcx-ending-whisker-no-outliers.png")
+
 
 print("end import")

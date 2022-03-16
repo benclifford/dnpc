@@ -19,6 +19,7 @@ def import_cloudwatch(known_task_uuids, outer_context):
         print(f"Time: {row[0]}")
         json_str = row[1]
         json_str = json_str.replace('\\r\n','')
+        json_str = json_str.replace('\n','')
         print(f"JSON: {json_str}")
  
         json_outer = json.loads(json_str)
