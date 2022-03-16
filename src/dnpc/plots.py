@@ -1100,6 +1100,9 @@ def plot_context_streamgraph(all_state_subcontexts, filebase, state_config={}):
     canonical_x_axis = list(canonical_x_axis_set)
     canonical_x_axis.sort()
 
+    if len(canonical_x_axis) == 0:
+        raise ValueError("This plot has no x axis values (so no events, probably)")
+
     ys = []
     labels = []
     colors = []
