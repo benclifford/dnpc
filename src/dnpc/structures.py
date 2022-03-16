@@ -234,3 +234,21 @@ class Context:
             if predicate(key, ctx):
                 new_context.alias_context(key, ctx)
         return new_context
+
+    def dump(self):
+        if self.aliased is not None:
+            return self.aliased.dump()
+
+        print("=== START CONTEXT DUMP ===")
+        print(f"id @{id(self)}, name {self.name}, type {self.type}")
+        print(f"Events: number of events: {len(self.events)}")
+        for e in self.events:
+            print(f"  event: {e}")
+        print(f"Subcontexts: number of subcontexts: {len(self._subcontexts)}")
+        for ctx in self._subcontexts:
+            print(f"Subcontext key {ctx}:")
+            self._subcontexts[ctx].dump()
+
+
+        print("=== END CONTEXT DUMP ===")
+      
