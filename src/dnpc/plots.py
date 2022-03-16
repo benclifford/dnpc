@@ -402,9 +402,12 @@ def plot_tasks_launched_streamgraph_wq_by_type(db_context):
                     "#FFFF00",
                     "#0000FF",
                     "#FF00FF",
-                    "#00FFFF"]
+                    "#00FFFF",
+                    "#FF7777"]
 
     for func_name in appnames:
+        if len(colour_list) <= 0:
+            raise RuntimeError("Not enough predefined colours")
         colour_states[func_name] = colour_list.pop()
 
 
@@ -519,9 +522,12 @@ def plot_tasks_running_streamgraph_wq_by_type(db_context):
                     "#FFFF00",
                     "#0000FF",
                     "#FF00FF",
-                    "#00FFFF"]
+                    "#00FFFF",
+                    "#FF7777"]
 
     for func_name in appnames:
+        if len(colour_list) <= 0:
+            raise RuntimeError("Not enough predefined colours")
         colour_states[func_name] = colour_list.pop()
 
 
@@ -639,9 +645,12 @@ def plot_tasks_running_streamgraph_wq_by_type_mem_weighted(db_context):
                     "#FFFF00",
                     "#0000FF",
                     "#FF00FF",
-                    "#00FFFF"]
+                    "#00FFFF",
+                    "#FF7777"]
 
     for func_name in appnames:
+        if len(colour_list) <= 0:
+            raise RuntimeError("Not enough predefined colours")
         colour_states[func_name] = colour_list.pop()
 
 
