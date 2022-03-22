@@ -111,7 +111,7 @@ def filter_poll_start(ctx):
 
 ctxs = [filter_poll_start(c) for c in ctxs]
 
-colour_states={"RUN": "#FF0000",
+client_colour_states={"RUN": "#FF0000",
                "RUN_POST": "#FF7777",
                "POLL_START": "#FFFF00",
                "POLL_END_COMPLETE": "#00FF00",
@@ -119,7 +119,7 @@ colour_states={"RUN": "#FF0000",
                "POLL_END_PENDING_waiting-for-launch": "#0000FF",
                "POLL_END_PENDING_waiting-for-nodes": "#00FFFF"
                }
-plot_context_streamgraph(ctxs, "funcx-client-view.png", colour_states)
+plot_context_streamgraph(ctxs, "funcx-client-view.png", client_colour_states)
 
 cloudwatch_colour_states = {"funcx_web_service-user_fetched": "#77FF22",
                             "funcx_forwarder.forwarder-result_enqueued": "#00EE00",
@@ -152,7 +152,7 @@ def absorb_ctx_events(new_ctx, initial_ctx, prefix=""):
 # replace each context with a recursively flattened set of events
 collapsed_ctxs = [collapse_ctx(ctx) for ctx in ctxs]
 
-plot_context_streamgraph(collapsed_ctxs, "funcx-collapsed-contexts.png", colour_states)
+plot_context_streamgraph(collapsed_ctxs, "funcx-collapsed-contexts.png", client_colour_states)
 
 # TODO: histogram poll time (500 x many)
 
