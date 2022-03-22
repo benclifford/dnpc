@@ -15,6 +15,17 @@ from dnpc.plots import plot_context_streamgraph
 
 from funcxbits.cloudwatch_csv import import_cloudwatch
 
+# There are three log sources at the moment, and different sets
+# of results can be calculated depending on which is available:
+
+source_clientside = True
+
+# the central hosted services data - either cloudwatch or from k8s
+source_central = False
+
+# endpoint logs - I'm not doing anything with these
+source_endpoint = False
+
 # this is specifically aimed at importing the logs generated
 # by funcxbits.do_some_runs
 
@@ -83,9 +94,8 @@ with open("do_some_runs.log", "r") as logfile:
             appfn_ctx.events.append(event)
 
 
-
-
-cloudwatch_ctx = import_cloudwatch(known_task_uuids, root_context)
+if source_central:
+    cloudwatch_ctx = import_cloudwatch(known_task_uuids, root_context)
 
 print(root_context)
 
@@ -117,7 +127,8 @@ cloudwatch_colour_states = {"funcx_web_service-user_fetched": "#77FF22",
                             "funcx_forwarder.forwarder-dispatched_to_endpoint": "#00FFFF"
                            }
 
-plot_context_streamgraph(cloudwatch_ctx.subcontexts_by_type("funcx.cloudwatch.task"), "funcx-cloudwatch-view.png", cloudwatch_colour_states)
+if source_central:
+  plot_context_streamgraph(cloudwatch_ctx.subcontexts_by_type("funcx.cloudwatch.task"), "funcx-cloudwatch-view.png", cloudwatch_colour_states)
 
 
 # plot a streamgraph of all known state transitions, collapsed from all subcontexts
@@ -220,38 +231,39 @@ hist, bins, _ = ax.hist(xs, bins=100)
 plt.savefig("funcx-cloudwatch-enqueued-to-fetched-histo.png")
 """
 
-# histogram of user side task completion, and forward side result_enqueued
-def scan_context_for_enqueued_to_client_completed_duration(ctx):
-  subctx = ctx.subcontexts_by_type("funcx.cloudwatch.task")
-  assert len(subctx) == 1
-  events = subctx[0].events
-  enqueued = [e for e in events if e.type == "funcx_forwarder.forwarder-result_enqueued"]
+if source_central:
+  # histogram of user side task completion, and forward side result_enqueued
+  def scan_context_for_enqueued_to_client_completed_duration(ctx):
+    subctx = ctx.subcontexts_by_type("funcx.cloudwatch.task")
+    assert len(subctx) == 1
+    events = subctx[0].events
+    enqueued = [e for e in events if e.type == "funcx_forwarder.forwarder-result_enqueued"]
 
-  events = ctx.events
-  completed = [e for e in events if e.type == "POLL_END_COMPLETE"]
+    events = ctx.events
+    completed = [e for e in events if e.type == "POLL_END_COMPLETE"]
 
-  if len(enqueued) != 1 or len(completed) != 1:
-    raise ValueError("Task does not have correct states for this plot")
-    return []
-  return [ completed[0].time - enqueued[0].time ]
+    if len(enqueued) != 1 or len(completed) != 1:
+      raise ValueError("Task does not have correct states for this plot")
+      return []
+    return [ completed[0].time - enqueued[0].time ]
 
-ctxs = root_context.subcontexts_by_type("demo.apptask")
-ctx_durations = [scan_context_for_enqueued_to_client_completed_duration(c) for c in ctxs ]
+  ctxs = root_context.subcontexts_by_type("demo.apptask")
+  ctx_durations = [scan_context_for_enqueued_to_client_completed_duration(c) for c in ctxs ]
 
-durations= []
-for d in ctx_durations:
-  durations.extend(d)
+  durations= []
+  for d in ctx_durations:
+    durations.extend(d)
 
-xs = durations
-print(xs)
+  xs = durations
+  print(xs)
 
 
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-plt.title("Result enqueued to user fetched duration")
-hist, bins, _ = ax.hist(xs, bins=100)
+  fig = plt.figure()
+  ax = fig.add_subplot(1, 1, 1)
+  plt.title("Result enqueued to user fetched duration")
+  hist, bins, _ = ax.hist(xs, bins=100)
 
-plt.savefig("funcx-cloudwatch-enqueued-to-client-completed-histo.png")
+  plt.savefig("funcx-cloudwatch-enqueued-to-client-completed-histo.png")
 
 
 # histogram of user side task completion, and web service funcx_web_service-user_fetched"
@@ -313,9 +325,12 @@ hist, bins, _ = ax.hist(durations, bins=100)
 
 plt.savefig("funcx-duration-app-worker-side.png")
 
-# histogram of task durations according to funcx worker-side
+# histogram of task durations according to funcx worker-side, reported to
+# central services
 
-def context_to_app_reported_duration(ctx):
+
+if source_central:
+ def context_to_app_reported_duration(ctx):
   subctxs = ctx.subcontexts_by_type("funcx.cloudwatch.task")
   assert len(subctxs) == 1
   subctx = subctxs[0]
@@ -331,14 +346,14 @@ def context_to_app_reported_duration(ctx):
 
   return (end - start)
 
-durations = [context_to_app_reported_duration(ctx) for ctx in root_context.subcontexts_by_type("demo.apptask")]
+ durations = [context_to_app_reported_duration(ctx) for ctx in root_context.subcontexts_by_type("demo.apptask")]
 
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-plt.title("Task duration according to funcx' worker side logging / seconds")
-hist, bins, _ = ax.hist(durations, bins=100)
+ fig = plt.figure()
+ ax = fig.add_subplot(1, 1, 1)
+ plt.title("Task duration according to funcx' worker side logging / seconds")
+ hist, bins, _ = ax.hist(durations, bins=100)
 
-plt.savefig("funcx-duration-funcx-worker-side.png")
+ plt.savefig("funcx-duration-funcx-worker-side.png")
 
 
 # box-and-whisker plot of task end states, normalised against in-app recorded completion time
@@ -368,7 +383,7 @@ def context_app_worker_end_time(ctx):
     return end
 
 def context_funcx_worker_end_time(ctx):
-    """Given a demo.apptask context, returnthe funcx reported worker end time.
+    """Given a demo.apptask context, return the funcx reported worker end time.
     """
 
     subctxs = ctx.subcontexts_by_type("funcx.cloudwatch.task")
@@ -406,14 +421,15 @@ def context_result_enqueued_time(ctx):
   return enqueued[0].time
 
 
-accessors = [("app_worker_end", context_app_worker_end_time),
-             ("funcx_worker_end", context_funcx_worker_end_time),
-             ("result_enqueued", context_result_enqueued_time),
-             ("client_poll_complete", context_client_poll_end_time)]
+if source_central:
+ accessors = [("app_worker_end", context_app_worker_end_time),
+              ("funcx_worker_end", context_funcx_worker_end_time),
+              ("result_enqueued", context_result_enqueued_time),
+              ("client_poll_complete", context_client_poll_end_time)]
 
-vs = []
+ vs = []
 
-for ctx in contexts:
+ for ctx in contexts:
   v = []
   for n in range(0, len(accessors)):
     accessor = accessors[n][1]
@@ -421,34 +437,34 @@ for ctx in contexts:
     v.append(new_val)
   vs.append(v)
 
-cols = [a[0] for a in accessors]
+ cols = [a[0] for a in accessors]
 
-df = pandas.DataFrame(data=vs, columns=cols)
+ df = pandas.DataFrame(data=vs, columns=cols)
 
-print(df)
+ print(df)
 
-base = df['app_worker_end']
+ base = df['app_worker_end']
 
-for c in df.columns:
+ for c in df.columns:
   df[c] = df[c] - base
 
-print(df)
+ print(df)
 
-formatted_labels = [c.replace("_","\n").replace(".","\n") for c in df.columns]
+ formatted_labels = [c.replace("_","\n").replace(".","\n") for c in df.columns]
 
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-plt.title("Ending events, normalised against app worker end / seconds")
-ax.boxplot(df, vert=False, labels=formatted_labels)
+ fig = plt.figure()
+ ax = fig.add_subplot(1, 1, 1)
+ plt.title("Ending events, normalised against app worker end / seconds")
+ ax.boxplot(df, vert=False, labels=formatted_labels)
 
-plt.savefig("funcx-ending-whisker.png")
+ plt.savefig("funcx-ending-whisker.png")
 
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-plt.title("Ending events, normalised against app worker end / seconds")
-ax.boxplot(df, vert=False, labels=formatted_labels, showfliers=False)
+ fig = plt.figure()
+ ax = fig.add_subplot(1, 1, 1)
+ plt.title("Ending events, normalised against app worker end / seconds")
+ ax.boxplot(df, vert=False, labels=formatted_labels, showfliers=False)
 
-plt.savefig("funcx-ending-whisker-no-outliers.png")
+ plt.savefig("funcx-ending-whisker-no-outliers.png")
 
 
-print("end import")
+print("end of some_runs_review")
