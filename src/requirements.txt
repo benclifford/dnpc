@@ -1,0 +1,6 @@
+matplotlib
+parsl==1.2
+
+flake8
+
+mypy==0.931
