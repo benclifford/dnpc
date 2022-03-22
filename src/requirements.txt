@@ -1,4 +1,6 @@
 matplotlib
+pandas
+
 parsl==1.2
 
 flake8
