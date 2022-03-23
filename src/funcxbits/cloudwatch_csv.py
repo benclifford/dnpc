@@ -56,6 +56,9 @@ def process_json(known_task_uuids, outer_context, luuids, json_inner):
         if "task_id" not in json_inner:
             return  # skip non-task-id related lines
 
+        if "log_type" not in json_inner or json_inner["log_type"] != "task_transition":
+            return  # skip non-task-transition
+
         task_uuid = UUID(json_inner['task_id'])
 
         print(f"BENC: task_uuid = {task_uuid}")
