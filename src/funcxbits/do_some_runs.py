@@ -22,13 +22,16 @@ target_endpoint="5eefe259-5846-4ee6-8ccb-e395a6185ceb"
 wsuri = "ws://amber.cqx.ltd.uk/ws/v2/"
 
 
-NUM_ITERS = 200
+NUM_ITERS = 500
 
-def sleep(duration=10):
+def sleep():
     import time
     start=time.time()
     import platform # after start time - so this looks a bit ugly
+    import random
     workerid = platform.node()
+    duration = random.uniform(4,8)
+
     time.sleep(duration)
     end=time.time()
     return (start, end, workerid)

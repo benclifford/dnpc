@@ -58,6 +58,7 @@ with open("do_some_runs.log", "r") as logfile:
             # task_id = m.group(1)
             # task_context = base_context.get_context(task_id, "parsl.task")
             # try_id = m.group(2)
+            print(f"XX1: import TASK status, task id >{task_id}<")
             ctx = root_context.get_context(task_id, "demo.apptask")
             event = Event()
             event.type = status 
@@ -79,8 +80,9 @@ with open("do_some_runs.log", "r") as logfile:
         if m:
             task = m.group(1)
             end_time = m.group(3)
+            print(f"XX1: import apptask status, task id >{task}<, task_id >{task_id}<")
 
-            task_ctx = root_context.get_context(task_id, "demo.apptask")
+            task_ctx = root_context.get_context(task, "demo.apptask")
             appfn_ctx = task_ctx.get_context("appfn", "demo.apptask.worker")
 
             event = Event()
@@ -99,7 +101,11 @@ if source_central:
 
 print(root_context)
 
+print("root context dump:")
+root_context.dump()
+print("end root context dump")
 
+# =====
 ctxs = root_context.subcontexts_by_type("demo.apptask")
 
 def filter_poll_start(ctx):
@@ -111,21 +117,43 @@ def filter_poll_start(ctx):
 
 ctxs = [filter_poll_start(c) for c in ctxs]
 
-client_colour_states={"RUN": "#FF0000",
-               "RUN_POST": "#FF7777",
+client_colour_states={"SUBMIT": "#FF0000",
+               "SUBMIT_POST": "#FF7777",
+               # These only manifest when polling, not using ws
+               # "POLL_END_PENDING_running": "#FF00FF",
+               # "POLL_END_PENDING_waiting-for-launch": "#0000FF",
+               # "POLL_END_PENDING_waiting-for-nodes": "#00FFFF",
+               "appfn.app_in_worker_start": "#7777FF",
+               "appfn.app_in_worker_end": "#007700",
                "POLL_START": "#FFFF00",
-               "POLL_END_COMPLETE": "#00FF00",
-               "POLL_END_PENDING_running": "#FF00FF",
-               "POLL_END_PENDING_waiting-for-launch": "#0000FF",
-               "POLL_END_PENDING_waiting-for-nodes": "#00FFFF"
+               "POLL_END_COMPLETE": "#00FF00"
                }
-plot_context_streamgraph(ctxs, "funcx-client-view.png", client_colour_states)
+plot_context_streamgraph(ctxs, "funcx-client-view", client_colour_states)
+
+# ====
+# plot of how many tasks are in app_in_worker_start
+# i.e. "running" according to my app code
+
+apptask_ctxs = root_context.subcontexts_by_type("demo.apptask")
+
+ctxs = []
+for c in apptask_ctxs:
+    ctxs += c.subcontexts_by_type("demo.apptask.worker")
+
+appfn_colour_states={
+               "app_in_worker_start": "#7777FF",
+               "app_in_worker_end": None,
+               }
+plot_context_streamgraph(ctxs, "funcx-appfn-view-running", appfn_colour_states)
+
+# ====
 
 cloudwatch_colour_states = {"funcx_web_service-user_fetched": "#77FF22",
                             "funcx_forwarder.forwarder-result_enqueued": "#00EE00",
                             "funcx_web_service-received": "#FF7777",
                             "funcx_forwarder.forwarder-dispatched_to_endpoint": "#00FFFF"
                            }
+
 
 if source_central:
   plot_context_streamgraph(cloudwatch_ctx.subcontexts_by_type("funcx.cloudwatch.task"), "funcx-cloudwatch-view.png", cloudwatch_colour_states)
