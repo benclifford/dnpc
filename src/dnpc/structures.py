@@ -235,20 +235,24 @@ class Context:
                 new_context.alias_context(key, ctx)
         return new_context
 
-    def dump(self):
+    def dump(self, depth=0):
         if self.aliased is not None:
             return self.aliased.dump()
 
-        print("=== START CONTEXT DUMP ===")
-        print(f"id @{id(self)}, name {self.name}, type {self.type}")
-        print(f"Events: number of events: {len(self.events)}")
+        indent = ""
+        for n in range(depth):
+            indent += "  "
+
+        print(f"{indent}=== START CONTEXT DUMP ===")
+        print(f"{indent}id @{id(self)}, name {self.name}, type {self.type}")
+        print(f"{indent}Events: number of events: {len(self.events)}")
         for e in self.events:
-            print(f"  event: {e}")
-        print(f"Subcontexts: number of subcontexts: {len(self._subcontexts)}")
+            print(f"{indent}  event: {e}")
+        print(f"{indent}Subcontexts: number of subcontexts: {len(self._subcontexts)}")
         for ctx in self._subcontexts:
-            print(f"Subcontext key {ctx}:")
-            self._subcontexts[ctx].dump()
+            print(f"{indent}Subcontext key {ctx}:")
+            self._subcontexts[ctx].dump(depth=depth+1)
 
 
-        print("=== END CONTEXT DUMP ===")
+        print("{indent}=== END CONTEXT DUMP ===")
       
