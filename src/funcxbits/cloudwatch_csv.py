@@ -29,13 +29,36 @@ def import_cloudwatch(known_task_uuids, outer_context):
         json_inner_str = json_outer['log']
 
         json_inner = json.loads(json_inner_str)
+        assert len(row) == 2
+
+        process_json(known_task_uuids, outer_context, luuids, json_inner)
+
+  print(f"Found {len(luuids)} uuids matching")
+  return outer_context
+
+
+def import_file(known_task_uuids, outer_context):
+    print(f"BENC: Known task uuids: {known_task_uuids}")
+    luuids = set()
+    with open("jsonlogs", "r") as f:
+        for l in f:
+            if l[0] == '{':
+                json_inner = json.loads(l)
+                process_json(known_task_uuids, outer_context, luuids, json_inner)
+    print(f"Found {len(luuids)} uuids matching")
+    return outer_context
+
+def process_json(known_task_uuids, outer_context, luuids, json_inner):
 
         print(f"JSON inner: {json_inner}")
         assert isinstance(json_inner, dict)
 
-        assert len(row) == 2
+        if "task_id" not in json_inner:
+            return  # skip non-task-id related lines
 
         task_uuid = UUID(json_inner['task_id'])
+
+        print(f"BENC: task_uuid = {task_uuid}")
 
         if task_uuid in known_task_uuids:
             ctx = outer_context.get_context(task_uuid, "funcx.cloudwatch.task")  # TODO: are we allowed to use a UUID as a key in dnpc? probs should follow dict-like rules, so yes
@@ -69,6 +92,4 @@ def import_cloudwatch(known_task_uuids, outer_context):
                     times_ctx.events.append(e)
 
 
-  return outer_context
 
-  print(f"Found {len(luuids)} uuids matching")

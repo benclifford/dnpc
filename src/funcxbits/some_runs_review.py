@@ -13,7 +13,7 @@ from uuid import UUID
 from dnpc.structures import Context, Event
 from dnpc.plots import plot_context_streamgraph
 
-from funcxbits.cloudwatch_csv import import_cloudwatch
+from funcxbits.cloudwatch_csv import import_cloudwatch, import_file
 
 # There are three log sources at the moment, and different sets
 # of results can be calculated depending on which is available:
@@ -21,7 +21,7 @@ from funcxbits.cloudwatch_csv import import_cloudwatch
 source_clientside = True
 
 # the central hosted services data - either cloudwatch or from k8s
-source_central = False
+source_central = "file"
 
 # endpoint logs - I'm not doing anything with these
 source_endpoint = False
@@ -65,8 +65,8 @@ with open("do_some_runs.log", "r") as logfile:
             event.time = float(time)
             ctx.events.append(event)
 
-            # TASK 0 RUN_POST 8e7bfed8-56fa-450b-bdf3-93921820c8fb
-            if status == "RUN_POST":  # extract the UUID to bind to funcx's task identity model
+            # TASK 0 SUBMIT_POST 8e7bfed8-56fa-450b-bdf3-93921820c8fb
+            if status == "SUBMIT_POST":  # extract the UUID to bind to funcx's task identity model
                 try:
                   u = UUID(m.group(4).strip())
                 except:
@@ -96,8 +96,10 @@ with open("do_some_runs.log", "r") as logfile:
             appfn_ctx.events.append(event)
 
 
-if source_central:
+if source_central == "cloudwatch":
     cloudwatch_ctx = import_cloudwatch(known_task_uuids, root_context)
+elif source_central == "file":
+    cloudwatch_ctx = import_file(known_task_uuids, root_context)
 
 print(root_context)
 
