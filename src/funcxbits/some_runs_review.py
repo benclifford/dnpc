@@ -20,11 +20,11 @@ from funcxbits.cloudwatch_csv import import_cloudwatch, import_file
 
 source_clientside = True
 
-# the central hosted services data - either cloudwatch or from k8s
+# the central hosted services data - either cloudwatch or from k8s copied file
 source_central = "file"
 
 # endpoint logs - I'm not doing anything with these
-source_endpoint = False
+source_endpoint = True
 
 # this is specifically aimed at importing the logs generated
 # by funcxbits.do_some_runs
@@ -96,10 +96,56 @@ with open("do_some_runs.log", "r") as logfile:
             appfn_ctx.events.append(event)
 
 
+def import_endpoint(known_task_uuids, root_context):
+
+    # 1647999545.795641 2022-03-23 01:39:05 INFO MainProcess-17 TASK_PULL_THREAD-140023248713472 funcx_endpoint.endpoint.interchange:316 _task_puller_loop Received task: 98008dc1-47c6-4244-9e1d-c51021906924
+
+    re_endpoint_interchange_received = re.compile('([0-9.]*) .* _task_puller_loop Received task: ([^ ]*)$')
+
+    # 1647999538.016503 2022-03-23 01:38:58 INFO Executor-Interchange-29 TASK_PULL_THREAD-140023489533696 funcx_endpoint.executors.high_throughput.interchange:472 migrate_tasks_to_internal Received task: 8a0f68ce-eb11-4e2a-80ef-63f487a113a7
+
+    re_executor_interchange_received = re.compile('([0-9.]*) .* migrate_tasks_to_internal Received task: ([^ ]*)$')
+
+    with open("endpoint.log", "r") as f:
+        for l in f:
+            m = re_endpoint_interchange_received.match(l)
+            if m:
+                task_uuid = UUID(m.group(2).strip())
+                t = float(m.group(1))
+                if task_uuid in known_task_uuids:
+                    main_uuid_ctx = root_context.get_context(task_uuid, "funcx.cloudwatch.task")
+                    ctx = main_uuid_ctx.get_context("endpoint", "funcx.endpoint")
+                    
+                    event = Event()
+                    event.type = "endpoint_interchange.received"
+                    event.time = t
+                    ctx.events.append(event)
+
+            m = re_executor_interchange_received.match(l)
+            if m:
+                task_uuid = UUID(m.group(2).strip())
+                t = float(m.group(1))
+                if task_uuid in known_task_uuids:
+                    main_uuid_ctx = root_context.get_context(task_uuid, "funcx.cloudwatch.task")
+                    ctx = main_uuid_ctx.get_context("endpoint", "funcx.endpoint")
+                    
+                    event = Event()
+                    event.type = "executor_interchange.received"
+                    event.time = t
+                    ctx.events.append(event)
+
+
+
+
 if source_central == "cloudwatch":
     cloudwatch_ctx = import_cloudwatch(known_task_uuids, root_context)
 elif source_central == "file":
     cloudwatch_ctx = import_file(known_task_uuids, root_context)
+
+
+if source_endpoint:
+    endpoint_ctx = import_endpoint(known_task_uuids, root_context)
+
 
 print(root_context)
 
@@ -172,6 +218,8 @@ def collapse_ctx(initial_ctx):
 
 def absorb_ctx_events(new_ctx, initial_ctx, prefix=""):
     for e in initial_ctx.events:
+        if e.type == "SUBMIT_POST":
+            continue
         new_e = Event()
         new_e.type = prefix + e.type
         new_e.time = e.time
@@ -182,7 +230,20 @@ def absorb_ctx_events(new_ctx, initial_ctx, prefix=""):
 # replace each context with a recursively flattened set of events
 collapsed_ctxs = [collapse_ctx(ctx) for ctx in ctxs]
 
-plot_context_streamgraph(collapsed_ctxs, "funcx-collapsed-contexts.png", client_colour_states)
+collapsed_colour_states = {}
+collapsed_colour_states.update({"SUBMIT": "#FF0000"})
+collapsed_colour_states.update({"cloudwatch.funcx_web_service-received": "#550000"})
+collapsed_colour_states.update({"cloudwatch.funcx_forwarder.forwarder-dispatched_to_endpoint": "#550000"})
+collapsed_colour_states.update({"cloudwatch.endpoint.endpoint_interchange.received": "#FFFF00"})
+collapsed_colour_states.update({"cloudwatch.endpoint.executor_interchange.received": "#FFAA00"})
+collapsed_colour_states.update({"cloudwatch.times.execution_start": "#5555FF"})
+collapsed_colour_states.update({"appfn.app_in_worker_start": "#0000FF"})
+collapsed_colour_states.update({"appfn.app_in_worker_end": "#7777FF"})
+collapsed_colour_states.update({"cloudwatch.times.execution_end": "#5555FF"})
+collapsed_colour_states.update({"cloudwatch.funcx_websocket_service.server-dispatched_to_user": "#33DD33"})
+collapsed_colour_states.update({"POLL_END_COMPLETE": "#00FF00"})
+
+plot_context_streamgraph(collapsed_ctxs, "funcx-collapsed-contexts.png", collapsed_colour_states)
 
 # TODO: histogram poll time (500 x many)
 
