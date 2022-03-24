@@ -106,6 +106,10 @@ def import_endpoint(known_task_uuids, root_context):
 
     re_executor_interchange_received = re.compile('([0-9.]*) .* migrate_tasks_to_internal Received task: ([^ ]*)$')
 
+    # 1648000349.533943 2022-03-23 01:52:29 DEBUG Executor-Interchange-29 MainThread-140023619893056 funcx_endpoint.executors.high_throughput.interchange:928 start Task: 98008dc1-47c6-4244-9e1d-c51021906924 is now WAITING_FOR_LAUNCH
+
+    re_waiting_for_launch = re.compile('([0-9.]*) .* start Task: ([^ ]*) is now WAITING_FOR_LAUNCH$')
+
     with open("endpoint.log", "r") as f:
         for l in f:
             m = re_endpoint_interchange_received.match(l)
@@ -133,6 +137,21 @@ def import_endpoint(known_task_uuids, root_context):
                     event.type = "executor_interchange.received"
                     event.time = t
                     ctx.events.append(event)
+
+            m = re_waiting_for_launch.match(l)
+            if m:
+                task_uuid = UUID(m.group(2).strip())
+                t = float(m.group(1))
+                if task_uuid in known_task_uuids:
+                    main_uuid_ctx = root_context.get_context(task_uuid, "funcx.cloudwatch.task")
+                    ctx = main_uuid_ctx.get_context("endpoint", "funcx.endpoint")
+                    
+                    event = Event()
+                    event.type = "executor_interchange.WAITING_FOR_LAUNCH"
+                    event.time = t
+                    ctx.events.append(event)
+
+
 
 
 
@@ -236,6 +255,7 @@ collapsed_colour_states.update({"cloudwatch.funcx_web_service-received": "#55000
 collapsed_colour_states.update({"cloudwatch.funcx_forwarder.forwarder-dispatched_to_endpoint": "#550000"})
 collapsed_colour_states.update({"cloudwatch.endpoint.endpoint_interchange.received": "#FFFF00"})
 collapsed_colour_states.update({"cloudwatch.endpoint.executor_interchange.received": "#FFAA00"})
+collapsed_colour_states.update({"cloudwatch.endpoint.executor_interchange.WAITING_FOR_LAUNCH": "#AAFF00"})
 collapsed_colour_states.update({"cloudwatch.times.execution_start": "#5555FF"})
 collapsed_colour_states.update({"appfn.app_in_worker_start": "#0000FF"})
 collapsed_colour_states.update({"appfn.app_in_worker_end": "#7777FF"})
@@ -415,6 +435,51 @@ plt.title("Task duration according to app's own worker side logging / seconds")
 hist, bins, _ = ax.hist(durations, bins=100)
 
 plt.savefig("funcx-duration-app-worker-side.png")
+
+
+if source_endpoint and source_central:
+  # histogram of WAITING_FOR_LAUNCH vs start time
+  def scan_context_for_enqueued_to_client_completed_duration(ctx):
+    subctx = ctx.subcontexts_by_type("funcx.cloudwatch.task")
+    assert len(subctx) == 1
+    subctx = subctx[0].subcontexts_by_type("funcx.endpoint")
+    assert len(subctx) == 1
+    events = subctx[0].events
+    enqueued = [e for e in events if e.type == "executor_interchange.WAITING_FOR_LAUNCH"]
+    print(events)
+    assert len(enqueued) == 1
+
+    subctx = ctx.subcontexts_by_type("funcx.cloudwatch.task")
+    assert len(subctx) == 1
+    subctx = subctx[0].subcontexts_by_type("funcx.cloudwatch.task.times")
+    assert len(subctx) == 1
+    events = subctx[0].events
+    completed = [e for e in events if e.type == "execution_start"]
+    assert len(completed) == 1
+
+    if len(enqueued) != 1 or len(completed) != 1:
+      raise ValueError("Task does not have correct states for this plot")
+      return []
+    return [ completed[0].time - enqueued[0].time ]
+
+  ctxs = root_context.subcontexts_by_type("demo.apptask")
+  ctx_durations = [scan_context_for_enqueued_to_client_completed_duration(c) for c in ctxs ]
+
+  durations= []
+  for d in ctx_durations:
+    durations.extend(d)
+
+  xs = durations
+  print(xs)
+
+
+  fig = plt.figure()
+  ax = fig.add_subplot(1, 1, 1)
+  plt.title("Time from WAITING_FOR_LAUNCH to execution begins")
+  hist, bins, _ = ax.hist(xs, bins=100)
+
+  plt.savefig("funcx-WAITING_FOR_LAUNCH-to-execution-histo.png")
+
 
 # histogram of task durations according to funcx worker-side, reported to
 # central services
