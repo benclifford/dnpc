@@ -38,13 +38,13 @@ def sleep():
 
 if __name__ == "__main__":
 
-    uuid_to_taskn_map = {}
+    future_to_taskn_map = {}
     futures = []
 
     logging.basicConfig(level=logging.DEBUG, filename="do_some_runs.log", format="%(created)f %(asctime)s %(name)s:%(lineno)d %(processName)s(%(process)d) %(threadName)s [%(levelname)s]  %(message)s")
     logger.info("APP CREATE_FUNCX_CLIENT")
     c = funcx.FuncXClient(funcx_service_address=funcx_service, results_ws_uri=wsuri)
-    executor = funcx.sdk.executor.FuncXExecutor(c)
+    executor = funcx.sdk.executor.FuncXExecutor(c, batch_enabled=True)
 
     #logger.info("APP REGISTER_FUNCTION")
     # sleep_uuid = c.register_function(sleep)
@@ -54,13 +54,10 @@ if __name__ == "__main__":
     logger.info("APP LAUNCH_STAGE")
     for n in range(0,NUM_ITERS):
       logger.info(f"TASK {n} SUBMIT")
-      # result_uuid = c.run(endpoint_id = target_endpoint, function_id=sleep_uuid)
       future = executor.submit(sleep, endpoint_id= target_endpoint)
-      result_uuid = future.batch_id
-      logger.info(f"TASK {n} SUBMIT_POST {result_uuid}")
+      logger.info(f"TASK {n} SUBMIT_POST")
       futures.append(future)
-      # result_refs.append((n, result_uuid))
-      uuid_to_taskn_map[result_uuid] = n
+      future_to_taskn_map[future] = n
 
     logger.info("APP LAUNCH_STAGE_POST")
 
@@ -70,11 +67,11 @@ if __name__ == "__main__":
     for f in concurrent.futures.as_completed(futures):
       r = f.result()
       print(r)
-      print(f.batch_id)
-      n = uuid_to_taskn_map[f.batch_id]
+      print(f.task_id)
+      n = future_to_taskn_map[f]
       print(n)
       print("===")
-      logger.info(f"TASK {n} POLL_END_COMPLETE")
+      logger.info(f"TASK {n} POLL_END_COMPLETE {f.task_id}")
       logger.info(f"TASK_INNER_TIME {n} {r[0]} {r[1]} {r[2]}")
 
     logger.info("APP END_MAIN")

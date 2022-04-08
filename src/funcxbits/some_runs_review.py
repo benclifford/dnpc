@@ -21,10 +21,11 @@ from funcxbits.cloudwatch_csv import import_cloudwatch, import_file
 source_clientside = True
 
 # the central hosted services data - either cloudwatch or from k8s copied file
-source_central = "file"
+#source_central = "file"
+source_central = False
 
 # endpoint logs - I'm not doing anything with these
-source_endpoint = True
+source_endpoint = False
 
 # this is specifically aimed at importing the logs generated
 # by funcxbits.do_some_runs
